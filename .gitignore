@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 logs
 project/project
 project/target
@@ -30,3 +31,22 @@ shared/.jvm
 .cache
 .target
 bin/
+=======
+*.class
+*.log
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+>>>>>>> 493528fc08958d3a87d6a229683300aa089d436f

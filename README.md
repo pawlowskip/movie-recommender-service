@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Play Framework with Scala.js
 
 [![License](http://img.shields.io/:license-Apache%202-red.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
@@ -53,3 +54,6 @@ Make sure you use the IntelliJ Scala Plugin v1.3.3 or higher. There are known is
 3. `$ sbt stage deployHeroku`
 
 This example uses the [sbt-heroku](https://github.com/heroku/sbt-heroku) plugin to deploy to Heroku.
+=======
+# movie-recommender-service
+>>>>>>> 493528fc08958d3a87d6a229683300aa089d436f
