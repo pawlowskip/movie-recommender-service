@@ -1,12 +1,24 @@
 package components
 
-import japgolly.scalajs.react.{ReactNode, ReactComponentB, Callback}
+import japgolly.scalajs.react.{Callback, React, ReactComponentB, ReactElement, ReactNode}
 import japgolly.scalajs.react.vdom.prefix_<^._
 
 /**
  * Created by pp on 4/4/16.
  */
 object Bootstrap {
+
+  object row {
+    def apply(size: String, proportions: Int*)(body: ReactNode*) = {
+      require(proportions.size == body.size, "Incompatibile number of columns and proportions value")
+      <.div(^.`class` := "row",
+        (proportions zip body).map{ case (proportion, node) =>
+          <.div(^.`class` := s"col-$size-$proportion",
+            node
+          )}
+      )
+    }
+  }
 
   type Style = Style.Value
   object Style extends Enumeration {
@@ -63,27 +75,71 @@ object Bootstrap {
 
   }
 
-  object navbar {
+  object menu {
 
-    case class Location(address: String, isActive: Boolean)
-    case class Menu(locations: Location*) {
-
+    def apply(props: Props, menuElems: ReactNode*) = {
+      require(props.menu.locations.size == menuElems.size, "Incompatibile number of locations and menu elements")
+      component(props, menuElems: _*)
     }
-    // TODO Locations, in props list of locations
+
+    case class Location(address: String, isActive: Boolean, icon: AwesomeIcons.Icon) {
+      val isActiveClass = if (isActive) "active" else ""
+    }
+
+    case class Menu(locations: Location*)
 
 
+    type Style = Style.Value
     object Style extends Enumeration {
       val default, inverse = Value
     }
 
-    object Position extends Enumeration {
+    type FixedPosition = FixedPosition.Value
+    object FixedPosition extends Enumeration {
       val top, bottom = Value
+      def bootstrapClass(fixedPosition: Option[FixedPosition]): String = fixedPosition match {
+        case None => ""
+        case Some(fp) => s"navbar-fixed-$fp"
+      }
     }
 
     case class Props(brand: Option[ReactNode],
-
+                     menu: Menu,
                      style: Style = Style.default,
+                     fixedPosition: Option[FixedPosition] = None,
                      additionalStyles: Seq[String] = Seq.empty)
+
+    val component =
+      ReactComponentB[Props]("menu")
+        .renderPC((_, props, children) =>
+          <.div(
+            <.nav(^.`class` := s"navbar navbar-${props.style} ${FixedPosition.bootstrapClass(props.fixedPosition)}",
+              <.div(^.`class` := "container-fluid",
+                props.brand.map(br =>
+                  <.div(^.`class` := "navbar-header",
+                    <.a(^.`class` := "navbar-brand", ^.href := "#",
+                      br)
+                  )
+                ),
+                <.ul(^.`class` := "nav navbar-nav",
+                  props.menu.locations.map(location =>
+                      <.li(^.`class` := location.isActiveClass,
+                        <.a(^.href := "#",
+                          AwesomeIcons(location.icon),
+                          location.address)
+                      )
+                    )
+                )
+              )
+            ),
+            props.menu.locations
+              .zipWithIndex
+              .filter{ case (location, index) => location.isActive }
+              .map{ case (_, index) => React.Children.toArray(children)(index)}
+          )
+        ).build
+
+
   }
 
 }

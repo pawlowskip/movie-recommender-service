@@ -53,13 +53,15 @@ object AwesomeIcons {
         <.i(^.`class` := props.icon.htmlClass)
       ).build
 
-  def apply(props: Props) = component(props)
+  def apply(icon: Icon) = component(Props(icon))
 
   object Type {
     val film = "film"
     val thumbsUp = "thumbs-up"
     val star = "star"
     val user = "user"
+    val search = "search"
+    val wrench = "wrench"
   }
 
 }

@@ -5,10 +5,12 @@ import components.{AwesomeIcons, Bootstrap}
 
 import scala.scalajs.js
 import org.scalajs.dom
+
 import scalatags.JsDom.all._
 import japgolly.scalajs.react.vdom.prefix_<^._
-import japgolly.scalajs.react.{ReactComponentB, BackendScope, ReactDOM, Callback}
+import japgolly.scalajs.react.{BackendScope, Callback, ReactComponentB, ReactDOM}
 import components.Bootstrap.button
+import components.Bootstrap.menu.Location
 import components.Bootstrap.panel
 
 object ScalaJSExample extends js.JSApp {
@@ -29,7 +31,7 @@ object ScalaJSExample extends js.JSApp {
           panel(panel.Props(Some("heading")),
             <.p(s.size.toString),
             button(button.Props(incSize), "Size up"),
-            AwesomeIcons(AwesomeIcons.Props(Icon(AwesomeIcons.Type.thumbsUp, s.size)))
+            AwesomeIcons(Icon(AwesomeIcons.Type.thumbsUp, s.size))
           )
         )
       }
@@ -47,6 +49,23 @@ object ScalaJSExample extends js.JSApp {
       )
 
     ReactDOM.render(comp, root)
+
+    val locations = Seq(
+      Location(" My Movies", isActive = true, Icon(AwesomeIcons.Type.film)),
+      Location(" Recommendations", isActive = false, Icon(AwesomeIcons.Type.thumbsUp)),
+      Location(" Top 100", isActive = false, Icon(AwesomeIcons.Type.star)),
+      Location(" My Profile", isActive = false, Icon(AwesomeIcons.Type.user))
+    )
+
+    val menu = Bootstrap.menu.Menu(locations)
+
+
+    Bootstrap.menu(Bootstrap.menu.Props(brand = None, menu, Bootstrap.menu.Style.inverse, Some(Bootstrap.menu.FixedPosition.top))
+
+    )
+
+
+
 
 
     //---------------------------------------------------------
