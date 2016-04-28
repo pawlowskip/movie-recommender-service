@@ -43,6 +43,13 @@ object AwesomeIcons {
       case object DEG_270 extends Rotation(270, "fa-rotate-270")
     }
 
+    val film = Icon(Type.film)
+    val thumbsUp = Icon(Type.thumbsUp)
+    val star = Icon(Type.star)
+    val user = Icon(Type.user)
+    val search = Icon(Type.search)
+    val wrench = Icon(Type.wrench)
+
   }
 
   case class Props(icon: Icon)

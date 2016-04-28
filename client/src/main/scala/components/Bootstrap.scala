@@ -1,6 +1,6 @@
 package components
 
-import japgolly.scalajs.react.{Callback, React, ReactComponentB, ReactElement, ReactNode}
+import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.prefix_<^._
 
 /**
@@ -8,9 +8,16 @@ import japgolly.scalajs.react.vdom.prefix_<^._
  */
 object Bootstrap {
 
+  def additionalStyleHtmlClass(styles: Seq[String]) = styles.foldLeft("")((s1, s2) => s1 + " " + s2)
+
+  type Style = Style.Value
+  object Style extends Enumeration {
+    val default, primary, success, info, warning, danger = Value
+  }
+
   object row {
     def apply(size: String, proportions: Int*)(body: ReactNode*) = {
-      require(proportions.size == body.size, "Incompatibile number of columns and proportions value")
+      //require(proportions.size == body.size, "Incompatibile number of columns and proportions value")
       <.div(^.`class` := "row",
         (proportions zip body).map{ case (proportion, node) =>
           <.div(^.`class` := s"col-$size-$proportion",
@@ -19,13 +26,6 @@ object Bootstrap {
       )
     }
   }
-
-  type Style = Style.Value
-  object Style extends Enumeration {
-    val default, primary, success, info, warning, danger = Value
-  }
-
-  def additionalStyleHtmlClass(styles: Seq[String]) = styles.foldLeft("")((s1, s2) => s1 + " " + s2)
 
   object button {
     case class Props(onClick: Callback,
@@ -44,9 +44,36 @@ object Bootstrap {
           <.button(^.`class` := props.htmlClass, ^.`type` := "button", ^.onClick --> props.onClick, children)
         ).build
 
-    def apply(props: Props, children: ReactNode*) = component(props, children: _*)
+    def apply(onClick: Callback,
+              isBlock: Boolean = false,
+              style: Style = Style.default,
+              additionalStyles: Seq[String] = Seq.empty)
+             (children: ReactNode*) = component(Props(onClick, isBlock, style, additionalStyles), children: _*)
+
     def apply() = component
   }
+
+//  object textInput {
+//    case class Props(onTextChange: String => Callback,
+//                     value: String = "",
+//                     placeholder: String = "",
+//                     additionalStyles: Seq[String] = Seq.empty) {
+//
+//      val htmlClass = s"form-control ${additionalStyleHtmlClass(additionalStyles)}"
+//    }
+//
+//    val component =
+//      ReactComponentB[Props]("text-input")
+//        .renderPC((_, props, children) =>
+//          <.input(^.`type`:="text", ^.`class`:=props.htmlClass, ^.style:="width: 100%;",
+//            ^.placeholder:=props.placeholder, ^.value := props.value, ^.onChange ==> )
+//
+//          <.button(^.`class` := props.htmlClass, ^.`type` := "text", ^.onClick --> props.onClick, children)
+//        ).build
+//
+//    <.input(^.`type`:="text", ^.`class`:="form-control", ^.style:="width: 100%;",
+//      ^.placeholder:="Find by title ...", ^.value := s.searchText, ^.onChange ==> onTextChange),
+//  }
 
   object panel {
     case class Props(heading: Option[String] = None,
@@ -70,16 +97,24 @@ object Bootstrap {
           )
         ).build
 
-    def apply() = component
-    def apply(props: Props, body: ReactNode*) = component(props, body: _*)
+    def apply(heading: Option[String] = None,
+              footer: Option[String] = None,
+              style: Style = Style.default,
+              additionalStyles: Seq[String] = Seq.empty)
+             (body: ReactNode*) = component(Props(heading, footer, style, additionalStyles), body: _*)
 
   }
 
   object menu {
 
-    def apply(props: Props, menuElems: ReactNode*) = {
-      require(props.menu.locations.size == menuElems.size, "Incompatibile number of locations and menu elements")
-      component(props, menuElems: _*)
+    def apply(brand: Option[ReactNode],
+              menu: Menu,
+              style: Style = Style.default,
+              fixedPosition: Option[FixedPosition] = None,
+              additionalStyles: Seq[String] = Seq.empty)
+              (menuElems: ReactNode*) = {
+      require(menu.locations.size == menuElems.size, "Incompatible number of locations and menu elements")
+      component(Props(brand, menu, style, fixedPosition, additionalStyles), menuElems: _*)
     }
 
     case class Location(address: String, isActive: Boolean, icon: AwesomeIcons.Icon) {

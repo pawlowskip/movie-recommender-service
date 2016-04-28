@@ -1,7 +1,7 @@
 package example
 
 import components.AwesomeIcons.Icon
-import components.{AwesomeIcons, Bootstrap}
+import components._
 
 import scala.scalajs.js
 import org.scalajs.dom
@@ -12,6 +12,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ReactComponentB, ReactDOM
 import components.Bootstrap.button
 import components.Bootstrap.menu.Location
 import components.Bootstrap.panel
+import model.{Movie, Poster}
 
 object ScalaJSExample extends js.JSApp {
 
@@ -19,53 +20,60 @@ object ScalaJSExample extends js.JSApp {
 
     val root = dom.document.getElementById("root")
 
-    case class State(size: AwesomeIcons.Icon.Size)
+//    case class State(size: AwesomeIcons.Icon.Size)
+//
+//    class Backend($: BackendScope[Unit, State]) {
+//      val incSize =
+//        $.modState(state => state.copy(size = AwesomeIcons.Icon.Size.X5)) >>
+//        Callback.log(s"Size increased to!")
+//
+//      def render(s: State) = {
+//        <.div(^.`class` := "container",
+//          panel(panel.Props(Some("heading")),
+//            <.p(s.size.toString),
+//            button(button.Props(incSize), "Size up"),
+//            AwesomeIcons(Icon(AwesomeIcons.Type.thumbsUp, s.size))
+//          )
+//        )
+//      }
+//    }
+//
+//    val Example = ReactComponentB[Unit]("Example")
+//      .initialState(State(AwesomeIcons.Icon.Size.X3))
+//      .renderBackend[Backend]
+//      .build
+//
+//
+//    val comp =
+//      <.div(^.`class` := "container",
+//        Example(Unit)
+//      )
+//
+//    ReactDOM.render(comp, root)
 
-    class Backend($: BackendScope[Unit, State]) {
-      val incSize =
-        $.modState(state => state.copy(size = AwesomeIcons.Icon.Size.X5)) >>
-        Callback.log(s"Size increased to!")
+    val movies = for (i <- 1 to 6) yield
+      Movie(i.toLong, "Film name" + i, Poster("http://placehold.it/200x300"), 6.6, 10000, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam viverra euismod odio, gravida pellentesque urna varius vitae.")
 
-      def render(s: State) = {
-        <.div(^.`class` := "container",
-          panel(panel.Props(Some("heading")),
-            <.p(s.size.toString),
-            button(button.Props(incSize), "Size up"),
-            AwesomeIcons(Icon(AwesomeIcons.Type.thumbsUp, s.size))
-          )
-        )
-      }
-    }
-
-    val Example = ReactComponentB[Unit]("Example")
-      .initialState(State(AwesomeIcons.Icon.Size.X3))
-      .renderBackend[Backend]
-      .build
-
-
-    val comp =
-      <.div(^.`class` := "container",
-        Example(Unit)
-      )
-
-    ReactDOM.render(comp, root)
+    val myMoviesPanel = MyMoviesPanel.component(MyMoviesPanel.State(movies, ""))
 
     val locations = Seq(
-      Location(" My Movies", isActive = true, Icon(AwesomeIcons.Type.film)),
-      Location(" Recommendations", isActive = false, Icon(AwesomeIcons.Type.thumbsUp)),
-      Location(" Top 100", isActive = false, Icon(AwesomeIcons.Type.star)),
-      Location(" My Profile", isActive = false, Icon(AwesomeIcons.Type.user))
+      Location(" My Movies", isActive = true, Icon.film),
+      Location(" Recommendations", isActive = false, Icon.thumbsUp),
+      Location(" Top 100", isActive = false, Icon.star),
+      Location(" My Profile", isActive = false, Icon.user)
     )
 
-    val menu = Bootstrap.menu.Menu(locations)
+    val menu = Bootstrap.menu.Menu(locations: _*)
 
-
-    Bootstrap.menu(Bootstrap.menu.Props(brand = None, menu, Bootstrap.menu.Style.inverse, Some(Bootstrap.menu.FixedPosition.top))
-
+    import Bootstrap.menu.{Style, FixedPosition}
+    val menuPanel = Bootstrap.menu(brand = None, menu, Style.inverse, Some(FixedPosition.top))(
+      myMoviesPanel(Unit),
+      <.div(),
+      <.div(),
+      <.div()
     )
 
-
-
+    ReactDOM.render(menuPanel, root)
 
 
     //---------------------------------------------------------
