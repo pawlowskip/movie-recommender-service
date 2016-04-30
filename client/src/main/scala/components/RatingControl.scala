@@ -9,7 +9,7 @@ import AwesomeIcons._
   */
 object RatingControl {
 
-  def component() =
+  val component =
     ReactComponentB[Props]("rating-control")
       .initialState(State(None))
       .renderBackend[Backend]

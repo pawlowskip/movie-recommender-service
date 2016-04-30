@@ -15,17 +15,20 @@ object MyMoviesPanel {
       .renderBackend[Backend]
       .build
 
-  case class State(movies: Seq[Movie], searchTitle: String)
+  case class State(movies: Map[Long, Movie], searchTitle: String)
 
   class Backend($: BackendScope[Unit, State]) {
 
     def doSearch(s: String) =
       $.modState(state => state.copy(searchTitle = s))
 
-    def searchByTitle(state: State) = state.searchTitle match {
-      case "" => state.movies
-      case _ => state.movies.filter(_.name == state.searchTitle)
+    def searchByTitle(state: State): Seq[Movie] = state.searchTitle match {
+      case "" => state.movies.values.toSeq
+      case _ => state.movies.filter{ case (_, movie) => movie.name contains state.searchTitle}.values.toSeq
     }
+
+    def onMovieChange(movie: Movie): Callback =
+      $.modState(state => state.copy(movies = state.movies.updated(movie.id, movie)))
 
     val search = SearchPanel.component(SearchPanel.State(""))
 
@@ -33,7 +36,12 @@ object MyMoviesPanel {
       <.div(^.`class` := "container",
         search(SearchPanel.Props(doSearch, Callback.empty, s => Callback.empty)),
         <.br,
-        MoviesDashboard.component(MoviesDashboard.State())(MoviesDashboard.Props(searchByTitle(s)))
+        MoviesDashboard.component(
+          MoviesDashboard.Props(
+            searchByTitle(s),
+            onMovieChange
+          )
+        )
       )
     }
   }

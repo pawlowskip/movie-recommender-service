@@ -11,28 +11,23 @@ import model.Movie
   */
 object MoviesDashboard {
 
-  def component(initialState: State) =
-    ReactComponentB[Props]("MoviesDashboard")
-      .initialState(initialState)
+  val component=
+    ReactComponentB[Props]("movies-dashboard")
+      .initialState(Unit)
       .renderBackend[Backend]
       .build
 
-  case class State()
-  case class Props(movies: Seq[Movie])
+  case class Props(movies: Seq[Movie], onMovieChange: Movie => Callback)
 
-  class Backend($: BackendScope[Props, State]) {
+  class Backend($: BackendScope[Props, Unit]) {
 
-    def render(p: Props, s: State) = {
+    def render(p: Props) = {
       <.div(
         p.movies.sliding(3).map( threeMovies =>
           Bootstrap.row("md", 4, 4, 4)(
             threeMovies.map(movie =>
-              <.div(^.`class`:="movie-item",
-                <.img(^.`class`:="img-responsive", ^.src := movie.poster.url, ^.alt:= movie.name),
-                <.h3(
-                  <.a(^.href:="#", movie.name),
-                  <.p(movie.description)
-                )
+              MoviePanel.component(
+                MoviePanel.Props(movie, p.onMovieChange)
               )
             ): _*
           )

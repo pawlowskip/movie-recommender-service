@@ -113,7 +113,7 @@ object Bootstrap {
               fixedPosition: Option[FixedPosition] = None,
               additionalStyles: Seq[String] = Seq.empty)
               (menuElems: ReactNode*) = {
-      require(menu.locations.size == menuElems.size, "Incompatible number of locations and menu elements")
+      require(menu.values.size == menuElems.size, "Incompatible number of locations and menu elements")
       component(Props(brand, menu, style, fixedPosition, additionalStyles), menuElems: _*)
     }
 
@@ -121,8 +121,7 @@ object Bootstrap {
       val isActiveClass = if (isActive) "active" else ""
     }
 
-    case class Menu(locations: Location*)
-
+    type Menu = Map[String, Location]
 
     type Style = Style.Value
     object Style extends Enumeration {
@@ -139,40 +138,65 @@ object Bootstrap {
     }
 
     case class Props(brand: Option[ReactNode],
-                     menu: Menu,
+                     onPageChange: Location => Callback,
                      style: Style = Style.default,
                      fixedPosition: Option[FixedPosition] = None,
                      additionalStyles: Seq[String] = Seq.empty)
 
-    val component =
+    case class State(menu: Menu)
+
+    def component(menu: Menu) =
       ReactComponentB[Props]("menu")
-        .renderPC((_, props, children) =>
-          <.div(
-            <.nav(^.`class` := s"navbar navbar-${props.style} ${FixedPosition.bootstrapClass(props.fixedPosition)}",
-              <.div(^.`class` := "container-fluid",
-                props.brand.map(br =>
-                  <.div(^.`class` := "navbar-header",
-                    <.a(^.`class` := "navbar-brand", ^.href := "#",
-                      br)
+        .initialState(State(menu))
+        .renderBackend[Backend]
+        .build
+
+    class Backend($: BackendScope[Props, State]) {
+
+      def onPageChange(location: Location): Callback = {
+
+        def setActivePage(menu: Menu): Menu = {
+          val deactivated = menu.mapValues(location => location.copy(isActive = false))
+          deactivated.updated(location.address, location.copy(isActive = true))
+        }
+
+        $.modState(state =>
+          state.copy(
+            menu = setActivePage(state.menu)
+          )
+        )
+      }
+
+
+      def render(p: Props, s: State, children: PropsChildren) = {
+        <.div(
+          <.nav(^.`class` := s"navbar navbar-${p.style} ${FixedPosition.bootstrapClass(p.fixedPosition)}",
+            <.div(^.`class` := "container-fluid",
+              p.brand.map(br =>
+                <.div(^.`class` := "navbar-header",
+                  <.a(^.`class` := "navbar-brand", ^.href := "#",
+                    br)
+                )
+              ),
+              <.ul(^.`class` := "nav navbar-nav",
+                s.menu.values.map(location =>
+                  <.li(^.`class` := location.isActiveClass,
+                    <.a(^.href := "#",
+                      ^.onClick --> p.onPageChange(location),
+                      AwesomeIcons(location.icon),
+                      location.address)
                   )
-                ),
-                <.ul(^.`class` := "nav navbar-nav",
-                  props.menu.locations.map(location =>
-                      <.li(^.`class` := location.isActiveClass,
-                        <.a(^.href := "#",
-                          AwesomeIcons(location.icon),
-                          location.address)
-                      )
-                    )
                 )
               )
-            ),
-            props.menu.locations
-              .zipWithIndex
-              .filter{ case (location, index) => location.isActive }
-              .map{ case (_, index) => React.Children.toArray(children)(index)}
-          )
-        ).build
+            )
+          ),
+          s.menu.values
+            .zipWithIndex
+            .filter{ case (location, index) => location.isActive }
+            .map{ case (_, index) => React.Children.toArray(children)(index)}
+        )
+      }
+    }
 
 
   }
