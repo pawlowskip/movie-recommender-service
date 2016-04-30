@@ -8,12 +8,12 @@ import japgolly.scalajs.react.vdom.prefix_<^._
  */
 object AwesomeIcons {
 
-  case class Icon(name: String,
+  case class Icon(typ: Type,
                   size: Icon.Size = Icon.Size.NORMAL,
                   animation: Icon.Animation = Icon.Animation.NONE,
                   rotation: Icon.Rotation = Icon.Rotation.NONE) {
 
-    def htmlClass = s"fa fa-$name ${size.name} ${animation.name} ${rotation.name}"
+    def htmlClass = s"fa fa-${typ.name} ${size.name} ${animation.name} ${rotation.name}"
   }
 
   object Icon {
@@ -49,7 +49,7 @@ object AwesomeIcons {
     val user = Icon(Type.user)
     val search = Icon(Type.search)
     val wrench = Icon(Type.wrench)
-
+    val star_o = Icon(Type.star_o)
   }
 
   case class Props(icon: Icon)
@@ -62,13 +62,18 @@ object AwesomeIcons {
 
   def apply(icon: Icon) = component(Props(icon))
 
+  class Type(val name: String) extends AnyVal
+
   object Type {
-    val film = "film"
-    val thumbsUp = "thumbs-up"
-    val star = "star"
-    val user = "user"
-    val search = "search"
-    val wrench = "wrench"
+    def apply(name: String) = new Type(name)
+
+    val film = apply("film")
+    val thumbsUp = apply("thumbs-up")
+    val star = apply("star")
+    val user = apply("user")
+    val search = apply("search")
+    val wrench = apply("wrench")
+    val star_o = apply("star-o")
   }
 
 }
