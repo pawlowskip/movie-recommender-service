@@ -1,9 +1,8 @@
-package components
+package components.webpage
 
-import components.AwesomeIcons.Icon
-import components.Bootstrap.{button, panel, row}
+import components.framework.Bootstrap.{button, panel, row}
 import japgolly.scalajs.react.vdom.prefix_<^._
-import japgolly.scalajs.react.{BackendScope, _}
+import japgolly.scalajs.react.{BackendScope, Callback, _}
 
 /**
   * Created by pp on 4/26/16.

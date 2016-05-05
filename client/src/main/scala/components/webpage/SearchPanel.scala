@@ -1,11 +1,11 @@
-package components
+package components.webpage
 
-import components.AwesomeIcons.Icon
-import components.Bootstrap.{button, panel}
+import components.framework.AwesomeIcons.Icon
+import components.framework.Bootstrap.button
+import components.framework.{AwesomeIcons, Bootstrap}
 import japgolly.scalajs.react.vdom.prefix_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactComponentB, ReactEventI}
+import japgolly.scalajs.react.{BackendScope, CallbackTo, _}
 
-import scalatags.JsDom.all._
 
 /**
   * Created by pp on 4/25/16.
@@ -35,15 +35,15 @@ object SearchPanel {
 
     def render(p: Props, s: State) = {
       <.div(
-        Bootstrap.row("sm", 8, 2, 2)(
+        Bootstrap.row("sm", 8, 1)(
           <.input(^.`type`:="text", ^.`class`:="form-control", /*^.style:="width: 100%;",*/
                   ^.placeholder:="Find by title ...", ^.value := s.searchText, ^.onChange ==> onTextChange),
           button(p.onButtonSearch(s.searchText))(
             AwesomeIcons(Icon.search),
-            " Search"),
+            " Search")/*,
           button(p.onButtonSettings)(
             AwesomeIcons(Icon.wrench),
-            " Settings")
+            " Settings")*/
         )
       )
     }

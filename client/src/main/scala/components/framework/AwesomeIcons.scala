@@ -1,4 +1,4 @@
-package components
+package components.framework
 
 import japgolly.scalajs.react.ReactComponentB
 import japgolly.scalajs.react.vdom.prefix_<^._

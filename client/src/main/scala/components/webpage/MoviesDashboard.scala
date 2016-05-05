@@ -1,7 +1,6 @@
-package components
+package components.webpage
 
-import components.AwesomeIcons.Icon
-import components.Bootstrap.button
+import components.framework.Bootstrap
 import japgolly.scalajs.react.vdom.prefix_<^._
 import japgolly.scalajs.react.{BackendScope, _}
 import model.Movie
@@ -11,9 +10,8 @@ import model.Movie
   */
 object MoviesDashboard {
 
-  val component=
+  val component =
     ReactComponentB[Props]("movies-dashboard")
-      .initialState(Unit)
       .renderBackend[Backend]
       .build
 
@@ -22,16 +20,21 @@ object MoviesDashboard {
   class Backend($: BackendScope[Props, Unit]) {
 
     def render(p: Props) = {
-      <.div(
+      def renderMovies() =
         p.movies.sliding(3).map( threeMovies =>
           Bootstrap.row("md", 4, 4, 4)(
             threeMovies.map(movie =>
-              MoviePanel.component(
+              MoviePanel.component.withKey(movie.id)(
                 MoviePanel.Props(movie, p.onMovieChange)
               )
             ): _*
           )
         )
+
+      def renderEmpty() = <.h3(^.`class` := "text-center", "No movies to display.")
+
+      <.div(
+        if (p.movies.isEmpty) renderEmpty() else renderMovies()
       )
     }
   }

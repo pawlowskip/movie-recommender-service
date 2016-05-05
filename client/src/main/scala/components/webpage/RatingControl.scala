@@ -1,8 +1,9 @@
-package components
+package components.webpage
 
+import components.framework.AwesomeIcons
+import components.framework.AwesomeIcons.Icon
 import japgolly.scalajs.react.vdom.prefix_<^._
 import japgolly.scalajs.react.{BackendScope, _}
-import AwesomeIcons._
 
 /**
   * Created by pp on 4/30/16.
@@ -20,15 +21,16 @@ object RatingControl {
 
   class Backend($: BackendScope[Props, State]) {
 
-    def onHover(starNr: Int): Callback =
-      $.setState(State(Some(starNr)))
+    def displayRate(starNr: Option[Int]): Callback =
+      $.setState(State(starNr))
 
     def render(p: Props, s: State) = {
       val emptyStar = AwesomeIcons(Icon.star_o)
       val filledStar = AwesomeIcons(Icon.star)
 
       def star(nr: Int) = {
-        <.div(^.onClick --> p.onRate(nr), ^.onMouseOver --> onHover(nr),
+        <.div(^.`class` := "cursor-pointer float-left", ^.onClick --> p.onRate(nr),
+              ^.onMouseOver --> displayRate(Some(nr)), ^.onMouseLeave --> displayRate(p.rating),
           (p.rating, s.hoveredRating) match {
             case (None, None) => emptyStar
             case (_, Some(h)) => if (nr > h) emptyStar else filledStar
@@ -38,7 +40,8 @@ object RatingControl {
       }
 
       <.div(
-        (p.minRate to p.maxRate).map(star)
+        (p.minRate to p.maxRate).map(star),
+        <.br(^.`class` := "clear-left")
       )
     }
   }

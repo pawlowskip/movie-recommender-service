@@ -1,7 +1,7 @@
-package components
+package components.framework
 
-import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.prefix_<^._
+import japgolly.scalajs.react.{Callback, _}
 
 /**
  * Created by pp on 4/4/16.
@@ -107,15 +107,17 @@ object Bootstrap {
 
   object menu {
 
-    def apply(brand: Option[ReactNode],
-              menu: Menu,
-              style: Style = Style.default,
-              fixedPosition: Option[FixedPosition] = None,
-              additionalStyles: Seq[String] = Seq.empty)
-              (menuElems: ReactNode*) = {
-      require(menu.values.size == menuElems.size, "Incompatible number of locations and menu elements")
-      component(Props(brand, menu, style, fixedPosition, additionalStyles), menuElems: _*)
-    }
+    def apply(locations: Seq[Location]) = component(locations.map(location => (location.address, location)).toMap)
+
+//    def apply(brand: Option[ReactNode],
+//              menu: Menu,
+//              style: Style = Style.default,
+//              fixedPosition: Option[FixedPosition] = None,
+//              additionalStyles: Seq[String] = Seq.empty)
+//              (menuElems: ReactNode*) = {
+//      require(menu.values.size == menuElems.size, "Incompatible number of locations and menu elements")
+//      component(Props(brand, menu, style, fixedPosition, additionalStyles), menuElems: _*)
+//    }
 
     case class Location(address: String, isActive: Boolean, icon: AwesomeIcons.Icon) {
       val isActiveClass = if (isActive) "active" else ""
@@ -156,17 +158,16 @@ object Bootstrap {
       def onPageChange(location: Location): Callback = {
 
         def setActivePage(menu: Menu): Menu = {
-          val deactivated = menu.mapValues(location => location.copy(isActive = false))
+          val deactivated = menu.mapValues(l => l.copy(isActive = false))
           deactivated.updated(location.address, location.copy(isActive = true))
         }
 
-        $.modState(state =>
+        $.modState( state =>
           state.copy(
             menu = setActivePage(state.menu)
           )
-        )
+        ) >> $.props.flatMap(_.onPageChange(location)) >> $.state.flatMap(s => Callback.log("page changed!" + s.menu.values.mkString(", ")))
       }
-
 
       def render(p: Props, s: State, children: PropsChildren) = {
         <.div(
@@ -180,9 +181,8 @@ object Bootstrap {
               ),
               <.ul(^.`class` := "nav navbar-nav",
                 s.menu.values.map(location =>
-                  <.li(^.`class` := location.isActiveClass,
+                  <.li(^.key := location.address, ^.`class` := location.isActiveClass, ^.onClick --> onPageChange(location),
                     <.a(^.href := "#",
-                      ^.onClick --> p.onPageChange(location),
                       AwesomeIcons(location.icon),
                       location.address)
                   )

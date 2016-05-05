@@ -1,7 +1,7 @@
-package components
+package components.webpage
 
 import japgolly.scalajs.react.vdom.prefix_<^._
-import japgolly.scalajs.react.{BackendScope, ReactComponentB, Callback}
+import japgolly.scalajs.react.{Callback, _}
 import model.Movie
 
 /**
@@ -10,7 +10,7 @@ import model.Movie
 object MyMoviesPanel {
 
   def component(initialState: State) =
-    ReactComponentB[Unit]("MoviesDashboard")
+    ReactComponentB[Unit]("my-movies-panel")
       .initialState(initialState)
       .renderBackend[Backend]
       .build
