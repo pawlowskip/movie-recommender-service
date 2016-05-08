@@ -6,7 +6,8 @@ package model
 
 case class Poster(url: String)
 case class Movie(id: Long,
-                 name: String,
+                 title: String,
+                 year: Int,
                  poster: Poster,
                  averageRating: Double,
                  myRating: Option[Int],

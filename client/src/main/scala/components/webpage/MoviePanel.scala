@@ -20,9 +20,9 @@ object MoviePanel {
 
     def render(p: Props) = {
       <.div(^.`class`:="movie-item",
-        <.img(^.`class`:="img-responsive", ^.src := p.movie.poster.url, ^.alt:= p.movie.name),
+        <.img(^.`class`:="img-responsive", ^.src := p.movie.poster.url, ^.alt:= p.movie.title),
         <.h3(
-          <.a(^.href:="#", p.movie.name)
+          <.a(^.href:="#", p.movie.title)
         ),
         RatingControl.component(
           RatingControl.Props(
