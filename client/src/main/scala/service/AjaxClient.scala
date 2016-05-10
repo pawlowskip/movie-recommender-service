@@ -60,8 +60,6 @@ object ajax{
 
   def url(url: String): AjaxRequest = AjaxRequest().withUrl(url)
 
-
-
   def get[A](url: String,
              timeout: Duration = 0.millis,
              headers: Map[String, String] = Map.empty,
