@@ -24,7 +24,7 @@ object MyMoviesPanel {
 
     def searchByTitle(state: State): Seq[Movie] = state.searchTitle match {
       case "" => state.movies.values.toSeq
-      case _ => state.movies.filter{ case (_, movie) => movie.name contains state.searchTitle}.values.toSeq
+      case _ => state.movies.filter{ case (_, movie) => movie.title contains state.searchTitle}.values.toSeq
     }
 
     def onMovieChange(movie: Movie): Callback =

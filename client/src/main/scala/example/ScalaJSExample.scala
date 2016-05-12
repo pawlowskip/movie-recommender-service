@@ -23,7 +23,7 @@ object ScalaJSExample extends js.JSApp {
     val root = dom.document.getElementById("root")
 
     val movies = for (i <- 1 to 6) yield
-      i.toLong -> Movie(i.toLong, "Film name" + i, Poster("http://placehold.it/200x300"), 6.6, Some(4), 10000, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam viverra euismod odio, gravida pellentesque urna varius vitae.")
+      i.toLong -> Movie(i.toLong, "Film name" + i, 2000, Poster("http://placehold.it/200x300"), 6.6, Some(4), 10000, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam viverra euismod odio, gravida pellentesque urna varius vitae.")
 
     val myMoviesPanel = MyMoviesPanel.component(MyMoviesPanel.State(movies.toMap, ""))
 

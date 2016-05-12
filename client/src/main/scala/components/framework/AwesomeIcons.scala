@@ -71,7 +71,7 @@ object AwesomeIcons {
     val thumbsUp = apply("thumbs-up")
     val star = apply("star")
     val user = apply("user")
-    val search = apply("search")
+    val search = apply("main.scala.search")
     val wrench = apply("wrench")
     val star_o = apply("star-o")
   }

@@ -10,14 +10,10 @@ lazy val server = (project in file("server")).settings(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   libraryDependencies ++= Seq(
     "com.vmunier" %% "play-scalajs-scripts" % "0.4.0",
-    "com.lihaoyi" %% "autowire" % "0.2.5",
     specs2 % Test
   ),
   includeFilter in (Assets, LessKeys.less) := "*.less",
-  excludeFilter in (Assets, LessKeys.less) := "_*.less",
-  // Heroku specific
-  herokuAppName in Compile := "your-heroku-app-name",
-  herokuSkipSubProjects in Compile := false
+  excludeFilter in (Assets, LessKeys.less) := "_*.less"
 ).enablePlugins(PlayScala, SbtWeb).
   aggregate(clients.map(projectToRef): _*).
   dependsOn(sharedJvm)
@@ -31,7 +27,6 @@ lazy val client = (project in file("client")).settings(
     "org.scala-js" %%% "scalajs-dom" % "0.8.0",
     "com.lihaoyi" %%% "scalatags" % "0.4.6",
     "com.github.japgolly.scalajs-react" %%% "core" % "0.10.4",
-    "com.lihaoyi" %%% "autowire" % "0.2.5",
     "com.lihaoyi" %%% "utest" % "0.4.3" % "test",
     "org.webjars" % "jquery" % "1.11.1",
     "org.webjars" % "bootstrap" % "3.3.6",
@@ -55,10 +50,12 @@ lazy val shared = (crossProject.crossType(CrossType.Pure) in file("shared")).
   settings(
     scalaVersion := scalaV,
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "upickle" % "0.4.0"
-    )
-  ).
-  jsConfigure(_ enablePlugins ScalaJSPlay)
+      "com.lihaoyi" %%% "upickle" % "0.4.0",
+      "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
+    ),
+    persistLauncher in Test := false,
+    testFrameworks += new TestFramework("utest.runner.Framework")
+  ).jsConfigure(_ enablePlugins ScalaJSPlay)
 
 lazy val sharedJvm = shared.jvm
 lazy val sharedJs = shared.js
@@ -66,7 +63,3 @@ lazy val sharedJs = shared.js
 // loads the Play project at sbt startup
 onLoad in Global := (Command.process("project server", _: State)) compose (onLoad in Global).value
 
-// for Eclipse users
-EclipseKeys.skipParents in ThisBuild := false
-// Compile the project before generating Eclipse files, so that generated .scala or .class files for views and routes are present
-EclipseKeys.preTasks := Seq(compile in (server, Compile))
