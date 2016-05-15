@@ -2,7 +2,6 @@ package service
 import org.scalajs.dom
 import upickle.default._
 import upickle._
-import autowire._
 
 import scala.concurrent.duration._
 import scala.concurrent.Future

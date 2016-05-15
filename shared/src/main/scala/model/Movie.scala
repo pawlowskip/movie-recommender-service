@@ -1,7 +1,7 @@
 package model
 
 import search.core.SearchCriteria
-import search.core.SearchCriteria.FieldCriteria
+import search.core.SearchCriteria.{Criteria, Field}
 
 /**
   * Created by pp on 4/26/16.
@@ -10,10 +10,7 @@ import search.core.SearchCriteria.FieldCriteria
 case class Poster(url: String)
 
 object Poster{
-  case class Url(inputCriteria: SearchCriteria[String]) extends FieldCriteria[Poster] {
-    override val criteria = SearchCriteria[Poster](m => inputCriteria.check(m.url))
-  }
-
+  case class PosterUrl(criteria: SearchCriteria[String]) extends Field[String, Poster](_.url)
 }
 
 case class Movie(id: Long,
@@ -26,32 +23,21 @@ case class Movie(id: Long,
                  description: String)
 
 object Movie {
-  val MovieID =
+  
+  case class MovieId(criteria: SearchCriteria[Long]) extends Field[Long, Movie](_.id)
 
-  case class MovieId(inputCriteria: SearchCriteria[Long]) extends FieldCriteria[Movie] {
-    override val criteria = SearchCriteria[Movie](m => inputCriteria.check(m.id))
-  }
+  case class MovieTitle(criteria: SearchCriteria[String]) extends Field[String, Movie](_.title)
 
+  case class MovieYear(criteria: SearchCriteria[Int]) extends Field[Int, Movie](_.year)
 
-  case class MovieTitle(inputCriteria: SearchCriteria[String])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.title)))
+  case class MoviePoster(criteria: SearchCriteria[Poster]) extends Field[Poster, Movie](_.poster)
 
-  case class MovieYear(inputCriteria: SearchCriteria[Int])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.year)))
+  case class MovieAverageRating(criteria: SearchCriteria[Double]) extends Field[Double, Movie](_.averageRating)
 
-  case class MoviePoster(inputCriteria: SearchCriteria[Poster])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.poster)))
+  case class MovieMyRating(criteria: SearchCriteria[Option[Int]]) extends Field[Option[Int], Movie](_.myRating)
 
-  case class MovieAverageRating(inputCriteria: SearchCriteria[Double])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.averageRating)))
+  case class MovieViewers(criteria: SearchCriteria[Int]) extends Field[Int, Movie](_.viewers)
 
-  case class MovieMyRating(inputCriteria: SearchCriteria[Option[Int]])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.myRating)))
-
-  case class MovieViewers(inputCriteria: SearchCriteria[Int])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.viewers)))
-
-  case class MovieDescription(inputCriteria: SearchCriteria[String])
-    extends FieldCriteria[Movie](SearchCriteria(m => inputCriteria.check(m.description)))
+  case class MovieDescription(criteria: SearchCriteria[String]) extends Field[String, Movie](_.description)
 
 }

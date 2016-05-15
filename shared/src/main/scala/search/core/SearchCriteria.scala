@@ -3,7 +3,7 @@ package search.core
 /**
   * Created by pp on 5/7/16.
   */
-trait SearchCriteria[A] {
+sealed trait SearchCriteria[A] {
   def check(value: A): Boolean
 }
 
@@ -29,12 +29,15 @@ object SearchCriteria {
     }
   }
 
-  def field[C, F](f: C => F): SearchCriteria[F] => SearchCriteria[C] =
-    (c: SearchCriteria[F]) => new SearchCriteria[C] {
-    override def check(value: C): Boolean = c.check(f(value))
+  abstract class Field[F, C](f: C => F) extends SearchCriteria[C] {
+    val criteria: SearchCriteria[F]
+    override def check(value: C): Boolean = criteria.check(f(value))
   }
 
-
+  /*def field[C, F](f: C => F): SearchCriteria[F] => SearchCriteria[C] =
+    (c: SearchCriteria[F]) => new SearchCriteria[C] {
+    override def check(value: C): Boolean = c.check(f(value))
+  }*/
 
   implicit def toFilterExecutor[A](criteria: Criteria[A]): FilterExecutor[A] = new FilterExecutor(criteria)
 
@@ -42,9 +45,8 @@ object SearchCriteria {
     def filter[C <: Iterable[A]](collection: C): Iterable[A] = criteria match {
       case Criteria(searchCriteria, None) => collection.filter(a => searchCriteria.check(a))
       case Criteria(searchCriteria, Some(SearchProps(limit, page))) =>
-        collection.filter(a => searchCriteria.check(a)).slice((page + 1) * limit, page * limit)
+        collection.filter(a => searchCriteria.check(a)).slice(page * limit, (page + 1) * limit)
     }
-
   }
 
 
@@ -53,7 +55,7 @@ object SearchCriteria {
   }
 
   object And {
-    def apply[A](criteria: SearchCriteria[A]*) = And(criteria)
+    def apply[A](criteria: SearchCriteria[A]*): SearchCriteria[A] = And(criteria)
   }
 
   case class Or[A](criteria: Seq[SearchCriteria[A]]) extends SearchCriteria[A] {
@@ -61,18 +63,12 @@ object SearchCriteria {
   }
 
   object Or {
-    def apply[A](criteria: SearchCriteria[A]*) = Or(criteria)
+    def apply[A](criteria: SearchCriteria[A]*): SearchCriteria[A] = Or(criteria)
   }
 
   case class Not[A](criteria: SearchCriteria[A]) extends SearchCriteria[A] {
     override def check(value: A): Boolean = !criteria.check(value)
   }
-
-  object Not {
-    def apply[A](criteria: SearchCriteria[A]) = Not(criteria)
-  }
-
-
 
 
   case class Equal[A](value: A) extends SearchCriteria[A] {
@@ -91,34 +87,25 @@ object SearchCriteria {
     override def contains(value: String): SearchCriteria[String] = StringContains(value)
   }
 
-  implicit def seqContainsInvoker[A]: ContainsInvoker[Seq[A], A] = new ContainsInvoker[Seq[A], A] {
-    override def contains(value: A): SearchCriteria[Seq[A]] = SeqContains(value)
+  implicit def seqContainsInvoker[A, T <: Seq[A]]: ContainsInvoker[T, A] = new ContainsInvoker[T, A] {
+    override def contains(value: A): SearchCriteria[T] = SeqContains[A, T](value)
   }
 
-  implicit def seqContainsInvoker[A]: ContainsInvoker[Set[A], A] = new ContainsInvoker[Set[A], A] {
-    override def contains(value: A): SearchCriteria[Set[A]] = SetContains(value)
-  }
-
-  implicit def seqContainsInvoker[K, V]: ContainsInvoker[Map[K, V], K] = new ContainsInvoker[Map[K, V], K] {
-    override def contains(value: K): SearchCriteria[Map[K, V]] = MapContains(value)
+  implicit def setContainsInvoker[A, T <: Set[A]]: ContainsInvoker[T, A] = new ContainsInvoker[T, A] {
+    override def contains(value: A): SearchCriteria[T] = SetContains[A, T](value)
   }
 
   case class StringContains(value: String) extends SearchCriteria[String] {
     override def check(value: String): Boolean = value.contains(this.value)
   }
 
-  case class SeqContains[A](value: A) extends SearchCriteria[Seq[A]] {
-    override def check(value: Seq[A]): Boolean = value.contains(this.value)
+  case class SeqContains[A, T <: Seq[A]](value: A) extends SearchCriteria[T] {
+    override def check(value: T): Boolean = value.contains(this.value)
   }
 
-  case class SetContains[A](value: A) extends SearchCriteria[Set[A]] {
-    override def check(value: Set[A]): Boolean = value.contains(this.value)
+  case class SetContains[A, T <: Set[A]](value: A) extends SearchCriteria[T] {
+    override def check(value: T): Boolean = value.contains(this.value)
   }
-
-  case class MapContains[K, V](value: K) extends SearchCriteria[Map[K, V]] {
-    override def check(value: Map[K, V]): Boolean = value.contains(this.value)
-  }
-
 
 
   case class MatchRegEx(regexStr: String) extends SearchCriteria[String] {
@@ -149,6 +136,31 @@ object SearchCriteria {
   case class Between[A](from: A, to: A)(implicit ordering: Ordering[A]) extends SearchCriteria[A] {
     override def check(value: A): Boolean = ordering.gt(value, from) && ordering.lt(value, to)
   }
+
+  trait NotEmptyInvoker[T]{
+    def notEmpty: SearchCriteria[T]
+  }
+
+  def NotEmpty[T](implicit notEmptyInvoker: NotEmptyInvoker[T]): SearchCriteria[T] = notEmptyInvoker.notEmpty
+  def IsEmpty[T](implicit notEmptyInvoker: NotEmptyInvoker[T]): SearchCriteria[T] = Not(notEmptyInvoker.notEmpty)
+
+
+  implicit val nonEmptyString: NotEmptyInvoker[String] = new NotEmptyInvoker[String] {
+    override def notEmpty: SearchCriteria[String] = NotEmptyString
+  }
+
+  implicit def nonEmptyCollection[T <: Traversable[_]]: NotEmptyInvoker[T] = new NotEmptyInvoker[T] {
+    override def notEmpty: SearchCriteria[T] = NotEmptyCollection()
+  }
+
+  case object NotEmptyString extends SearchCriteria[String] {
+    override def check(value: String): Boolean = value.nonEmpty
+  }
+
+  case class NotEmptyCollection[T <: Traversable[_]]() extends SearchCriteria[T] {
+    override def check(value: T): Boolean = value.nonEmpty
+  }
+
 
 }
 
