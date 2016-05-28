@@ -31,6 +31,8 @@ object SearchCriteriaSerializationTest extends TestSuite {
       val correctAnswer: Seq[(String, String)] =
         List(
           ("criteria", "Movie"),
+          ("limit", "-1"),
+          ("page", "-1"),
           ("And", "8"),
           ("field", "MovieTitle"),
           ("Equal", "Title"),

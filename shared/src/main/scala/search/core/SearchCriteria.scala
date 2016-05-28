@@ -22,7 +22,7 @@ object SearchCriteria {
     override def toQueryString: Seq[QueryStringParama] = toQueryStringFun
   }
 
-  @throws[UnsupportedOperationException]
+/*  @throws[UnsupportedOperationException]
   def fromQueryString[A](queryString: Seq[QueryStringParama], queryStringName: String): Criteria[A] = {
     def analyzeFirst3andRest(queryStringParama: Seq[QueryStringParama]): Criteria[A] = {
       val (first3, rest) = queryStringParama.splitAt(3)
@@ -49,12 +49,11 @@ object SearchCriteria {
         case ("And", number) =>
           val restAnalized = fromQueryString0(queryStringParama.tail)
           if (restAnalized.size != number) throw new UnsupportedOperationException("Bad number of inner criteria in And! " + restAnalized)
-          And()
-
+          ???
       }
 
     analyzeFirst3andRest(queryString)
-  }
+  }*/
 
   case class SearchProps(limit: Int, page: Int)
 

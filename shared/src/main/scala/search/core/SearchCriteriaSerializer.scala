@@ -1,7 +1,7 @@
 package search.core
-import querystring.Serializer
 import search.core.SearchCriteria.{And, Criteria, SearchProps}
 import search.core.SearchCriteria.QueryString
+import serialization.Serializer
 /**
   * Created by pp on 5/19/16.
   */
