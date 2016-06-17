@@ -143,9 +143,47 @@ object Deserializer {
         case result: Result[O, Token] => result
       }
 
+    def times[Token, O](token: Token, n: Int)(transformer: Token => O): Deserializer[Token, Seq[O]] =
+      zeroOrMore(token, (t: Seq[Token]) => t.map(transformer)).mapResult {
+        case result: Result[O, Token] if result.tokensParsed != n =>
+          Fail(s"Could not match $n token(s): $token", result.inputLeft)
+        case result: Result[O, Token] => result
+      }
+
+    def processWhile[Token, O](des: Deserializer[Token, O])(predicate: O => Boolean): Deserializer[Token, Seq[O]] = {
+      def processWhile0(acc: Seq[O], parsed: Int): Deserializer[Token, Seq[O]] = {
+        des.flatMapResult {
+          case Ok(out, inputLeft, tokensParsed) => processWhile0(acc :+ out, parsed + tokensParsed)
+          case Fail(cause, inputLeft) => Deserializer.always(Ok(acc, inputLeft, parsed))
+        }
+      }
+      processWhile0(Seq.empty[O], 0)
+    }
+
+    def processTimes[Token, O](des: Deserializer[Token, O], n: Int)(predicate: O => Boolean): Deserializer[Token, Seq[O]] = {
+      require(n > 0)
+      def processWhile0(acc: Seq[O], parsed: Int, times: Int): Deserializer[Token, Seq[O]] = {
+        if (times < n) {
+          des.flatMapResult {
+            case Ok(out, inputLeft, tokensParsed) => processWhile0(acc :+ out, parsed + tokensParsed, times + 1)
+            case fail @ Fail(_, _) => always(fail)
+          }
+        } else Deserializer((input: Input[Token]) => Ok(acc, input, parsed))
+      }
+      processWhile0(Seq.empty[O], 0, 0)
+    }
+
     def oneOf[Token, O](tokens: Seq[(Token, O)]): Deserializer[Token, O] = tokens match {
       case Seq() => failed(s"Could not match one of tokens: $tokens")
       case (token, o) +: rest => single[Token, O](token, o).flatMapResult {
+        case ok @ Ok(_, _, _) => always(ok)
+        case Fail(_, _) => oneOf(rest)
+      }
+    }
+
+    def oneOf[Token, O](deserializers: Seq[Deserializer[Token, O]]): Deserializer[Token, O] = deserializers match {
+      case Seq() => failed(s"Could not match one of tokens: $deserializers")
+      case des +: rest => des.flatMapResult {
         case ok @ Ok(_, _, _) => always(ok)
         case Fail(_, _) => oneOf(rest)
       }

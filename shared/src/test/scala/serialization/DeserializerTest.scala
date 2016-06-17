@@ -116,5 +116,17 @@ object DeserializerTest extends TestSuite {
       * - {assert(d.deserialize(emptyInput[Char]).isInstanceOf[Fail[Char]])}
     }
 
+    "Test [10] - Deserializer foldBackward" - {
+      val d1 = single[Char, Char => Int]('1', (c: Char) => c.toString.toInt)
+      val d2 = single[Char, Char]('2', '2')
+      val d3 = foldBackward(d1, d2)
+
+      * - {assert(d3.deserialize("12") == Ok(2, emptyInput[Char], 2))}
+      * - {assert(d3.deserialize("12d") == Ok(2, "d", 2))}
+      * - {assert(d3.deserialize("a12").isInstanceOf[Fail[Char]])}
+      * - {assert(d3.deserialize("1a2").isInstanceOf[Fail[Char]])}
+      * - {assert(d3.deserialize(emptyInput[Char]).isInstanceOf[Fail[Char]])}
+    }
+
   }
 }
