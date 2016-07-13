@@ -24,9 +24,10 @@ trait Deserializer[Token, +O] {
     g(this.deserialize(input))
   )
 
-  def flatMapResult[A](g: Result[O, Token] => Deserializer[Token, A]) = Deserializer[Token, A](input =>
-    g(this.deserialize(input)).deserialize(input)
-  )
+  def flatMapResult[A](g: Result[O, Token] => Deserializer[Token, A]) = Deserializer[Token, A] { input =>
+    val res = this.deserialize(input)
+    g(res).deserialize(res.inputLeft)
+  }
 
 }
 
@@ -173,11 +174,11 @@ object Deserializer {
       processWhile0(Seq.empty[O], 0, 0)
     }
 
-    def oneOf[Token, O](tokens: Seq[(Token, O)]): Deserializer[Token, O] = tokens match {
+    def oneOfToken[Token, O](tokens: Seq[(Token, O)]): Deserializer[Token, O] = tokens match {
       case Seq() => failed(s"Could not match one of tokens: $tokens")
       case (token, o) +: rest => single[Token, O](token, o).flatMapResult {
         case ok @ Ok(_, _, _) => always(ok)
-        case Fail(_, _) => oneOf(rest)
+        case Fail(_, _) => oneOfToken(rest)
       }
     }
 

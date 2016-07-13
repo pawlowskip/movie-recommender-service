@@ -7,7 +7,7 @@ import serialization.Serializer
   */
 object SearchCriteriaSerializer {
 
-  implicit def serializer[A](searchCriteria: SearchCriteria[A]): Serializer[SearchCriteria[A], QueryString] =
+  implicit def serializer[A]: Serializer[SearchCriteria[A], QueryString] =
     Serializer(criteria => criteria.toQueryString)
 
 }

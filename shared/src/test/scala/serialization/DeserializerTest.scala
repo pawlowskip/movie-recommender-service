@@ -85,7 +85,7 @@ object DeserializerTest extends TestSuite {
 
     "Test [9] - Deserializer oneOf" - {
       val seq = Seq(('1', '1'), ('2', '2'))
-      val d = oneOf(seq)
+      val d = oneOfToken(seq)
 
       * - {assert(d.deserialize("1") == Ok('1', emptyInput[Char], 1))}
       * - {assert(d.deserialize("2") == Ok('2', emptyInput[Char], 1))}

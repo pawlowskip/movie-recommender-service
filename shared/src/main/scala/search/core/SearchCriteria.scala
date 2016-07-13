@@ -65,11 +65,16 @@ object SearchCriteria {
 
     override def check(value: A): Boolean = criteria.check(value)
 
-    def limit(i: Int): Criteria[A] = this.copy(props = Some(SearchProps(i, 0)))
+    private def checkProps: Criteria[A] = props match {
+      case Some(SearchProps(-1, -1)) => this.copy(props = None)
+      case _ => this
+    }
+
+    def limit(i: Int): Criteria[A] = this.copy(props = Some(SearchProps(i, 0))).checkProps
 
     def page(p: Int): Criteria[A] = props match {
       case None => this.copy(props = Some(SearchProps(defaultLimit, p)))
-      case Some(SearchProps(l, _)) => this.copy(props = Some(SearchProps(l, p)))
+      case Some(SearchProps(l, _)) => this.copy(props = Some(SearchProps(l, p))).checkProps
       case _ => this.copy(props = Some(SearchProps(defaultLimit, p)))
     }
 
