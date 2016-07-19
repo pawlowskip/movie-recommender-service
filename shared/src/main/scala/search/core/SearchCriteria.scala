@@ -1,59 +1,34 @@
 package search.core
 
-import search.core.SearchCriteria.QueryStringParama
+import querystring.QueryString._
+import serialization.Deserializer.DeserializerBuilder._
+import serialization.{DeserializableAs, Deserializer, SerializableAs}
 
 import scala.annotation.tailrec
 
 /**
   * Created by pp on 5/7/16.
   */
-sealed trait SearchCriteria[A] {
+sealed trait SearchCriteria[A]
+  extends AsQueryString
+    with SerializableAs[SearchCriteria[A], QueryStringRep]
+    with DeserializableAs[QueryStringParama, SearchCriteria[A]] {
+
   def check(value: A): Boolean
   def toQueryString: Seq[QueryStringParama]
+  def getSerializer = SearchCriteriaSerializer.serializer
 }
 
 object SearchCriteria {
 
-  type QueryStringParama = (String, String)
-  type QueryString = Seq[QueryStringParama]
-
-  def apply[A](f: A => Boolean, toQueryStringFun: => Seq[QueryStringParama] = Seq()) = new SearchCriteria[A] {
+  def apply[A](f: A => Boolean,
+               toQueryStringFun: => Seq[QueryStringParama] = Seq(),
+               deserializer: Deserializer[(String, String), SearchCriteria[A]] = Deserializer.failed("Not implemented!")) = new SearchCriteria[A] {
     override def check(value: A) = f(value)
     override def toQueryString: Seq[QueryStringParama] = toQueryStringFun
+    override def getDeserializer: Deserializer[(String, String), SearchCriteria[A]] = deserializer
+
   }
-
-/*  @throws[UnsupportedOperationException]
-  def fromQueryString[A](queryString: Seq[QueryStringParama], queryStringName: String): Criteria[A] = {
-    def analyzeFirst3andRest(queryStringParama: Seq[QueryStringParama]): Criteria[A] = {
-      val (first3, rest) = queryStringParama.splitAt(3)
-      first3 match {
-        case Seq(("criteria", `queryStringName`), ("limit", "-1"), ("criteria", "-1")) =>
-          val restAnalyzed = fromQueryString0(rest)
-          restAnalyzed match {
-            case Seq(single) => Criteria[A](single, queryStringName, None)
-            case _ => throw new UnsupportedOperationException("Bad criteria body! " + rest)
-          }
-
-        case Seq(("criteria", `queryStringName`), ("limit", limit), ("criteria", page)) =>
-          val restAnalyzed = fromQueryString0(rest)
-          restAnalyzed match {
-            case Seq(single) => Criteria[A](single, queryStringName, Some(SearchProps(limit.toInt, page.toInt)))
-            case _ => throw new UnsupportedOperationException("Bad criteria body! " + rest)
-          }
-        case _ => throw new UnsupportedOperationException("Bad criteria header! " + first3)
-      }
-    }
-
-    def fromQueryString0(queryStringParama: Seq[QueryStringParama]): Seq[Criteria[A]] =
-      queryStringParama.head match {
-        case ("And", number) =>
-          val restAnalized = fromQueryString0(queryStringParama.tail)
-          if (restAnalized.size != number) throw new UnsupportedOperationException("Bad number of inner criteria in And! " + restAnalized)
-          ???
-      }
-
-    analyzeFirst3andRest(queryString)
-  }*/
 
   case class SearchProps(limit: Int, page: Int)
 
@@ -90,14 +65,9 @@ object SearchCriteria {
       params ++= criteria.toQueryString
       params.toList
     }
-  }
 
-  trait SimpleQueryStringSerialization[A] {
-    val value: A
-    val paramaName: String = getClass.getSimpleName
-    def toQueryString: Seq[QueryStringParama] = Seq(paramaName -> value.toString)
+    override def getDeserializer: Deserializer[(String, String), SearchCriteria[A]] = SearchCriteriaDeserializer.
   }
-
 
   abstract class Field[F, C](f: C => F) extends SearchCriteria[C] {
     val criteria: SearchCriteria[F]
@@ -124,6 +94,11 @@ object SearchCriteria {
       criteria.foreach(c => params ++= c.toQueryString)
       params.toList
     }
+
+    override def getDeserializer: Deserializer[(String, String), And[A]] =
+      SearchCriteriaDeserializer.andDeserializer{
+        oneOf(criteria.map(_.getDeserializer))
+      }
   }
 
   object And {
@@ -138,6 +113,11 @@ object SearchCriteria {
       criteria.foreach(c => params ++= c.toQueryString)
       params.toList
     }
+
+    override def getDeserializer: Deserializer[(String, String), Or[A]] =
+      SearchCriteriaDeserializer.orDeserializer{
+        oneOf(criteria.map(_.getDeserializer))
+      }
   }
 
   object Or {
@@ -152,11 +132,16 @@ object SearchCriteria {
       params ++= criteria.toQueryString
       params.toList
     }
+
+    override def getDeserializer: Deserializer[(String, String), Not[A]] =
+      SearchCriteriaDeserializer.notDeserializer(criteria.getDeserializer)
   }
 
 
   case class Equal[A](value: A) extends SearchCriteria[A] with SimpleQueryStringSerialization[A] {
     override def check(value: A): Boolean = this.value == value
+    override def getDeserializer: Deserializer[(String, String), Equal[A]] =
+      SearchCriteriaDeserializer.equalDeserializer[A]
   }
 
   trait ContainsInvoker[C, A] {
@@ -171,30 +156,38 @@ object SearchCriteria {
     override def contains(value: String): SearchCriteria[String] = StringContains(value)
   }
 
-  implicit def seqContainsInvoker[A, T <: Seq[A]]: ContainsInvoker[T, A] = new ContainsInvoker[T, A] {
-    override def contains(value: A): SearchCriteria[T] = SeqContains[A, T](value)
+  implicit def seqContainsInvoker[Elem, Col <: Seq[Elem]]: ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
+    override def contains(value: Elem): SearchCriteria[Col] = SeqContains[Elem, Col](value)
   }
 
-  implicit def setContainsInvoker[A, T <: Set[A]]: ContainsInvoker[T, A] = new ContainsInvoker[T, A] {
-    override def contains(value: A): SearchCriteria[T] = SetContains[A, T](value)
+  implicit def setContainsInvoker[Elem, Col <: Set[Elem]]: ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
+    override def contains(value: Elem): SearchCriteria[Col] = SetContains[Elem, Col](value)
   }
 
   case class StringContains(value: String) extends SearchCriteria[String] with SimpleQueryStringSerialization[String] {
     override def check(value: String): Boolean = value.contains(this.value)
+    override def getDeserializer: Deserializer[(String, String), StringContains] =
+      SearchCriteriaDeserializer.stringContainsDeserializer
   }
 
   case class SeqContains[A, T <: Seq[A]](value: A) extends SearchCriteria[T] with SimpleQueryStringSerialization[A] {
     override def check(value: T): Boolean = value.contains(this.value)
+    override def getDeserializer: Deserializer[(String, String), SeqContains[A, T]] =
+      SearchCriteriaDeserializer.seqContainsDeserializer[A, T]
   }
 
   case class SetContains[A, T <: Set[A]](value: A) extends SearchCriteria[T] with SimpleQueryStringSerialization[A] {
     override def check(value: T): Boolean = value.contains(this.value)
+    override def getDeserializer: Deserializer[(String, String), SetContains[A, T]] =
+      SearchCriteriaDeserializer.setContainsDeserializer[A, T]
   }
 
 
   case class MatchRegEx(value: String) extends SearchCriteria[String] with SimpleQueryStringSerialization[String] {
     val regEx = value.r
     override def check(value: String): Boolean = regEx.findFirstIn(value).isDefined
+    override def getDeserializer: Deserializer[(String, String), MatchRegEx] =
+      SearchCriteriaDeserializer.matchRegExDeserializer
   }
 
   case class LessThan[N](value: N)(implicit ordering: Ordering[N])

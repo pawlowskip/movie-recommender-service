@@ -4,34 +4,104 @@ import search.core.SearchCriteria._
 import serialization.DeserializationDefaults._
 import serialization.{Deserializer, Fail, Ok}
 import serialization.Deserializer.DeserializerBuilder._
-
+import serialization.Deserializer.TokenConverter
+import querystring.QueryString
 /**
   * Created by pp on 5/27/16.
   */
 object SearchCriteriaDeserializer {
-  type Token = (String, String)
+  type Token = QueryString.QueryStringParama
   type Header = (String, Int, Int)
 
-  trait TokenConverter[T] {
-    def convert(t: Token): T
-  }
+  implicit val tokenToString: TokenConverter[Token, String] = (t: Token) => t._2
 
-  implicit val tokenToString: TokenConverter[String] = new TokenConverter[String] {
-    override def convert(t: (String, String)): String = t._2
-  }
 
   def keyEqual(k: String): Token => Boolean = _._1 == k
 
   val limitDeserializer: Deserializer[Token, Int] = check[Token, Int](keyEqual("limit"))(_._2.toInt)
   val pageDeserializer: Deserializer[Token, Int] = check[Token, Int](keyEqual("page"))(_._2.toInt)
 
-  val headerDeserializer: Deserializer[Token, Header] =
-    single("criteria" -> "Movie", "Movie")
+  def headerDeserializer(criteriaName: String): Deserializer[Token, Header] =
+    single("criteria" -> criteriaName, criteriaName)
       .andThen[Int, (String, Int)](limitDeserializer)((s, i) => (s, i))
       .andThen[Int, Header](pageDeserializer)((a: (String, Int), b: Int) => (a._1, a._2, b))
 
-  def equalDeserializer[T](implicit tokenConverter: TokenConverter[T]): Deserializer[Token, Equal[T]] =
-    check[Token, Equal[T]](keyEqual("Equal"))(t => Equal[T](tokenConverter.convert(t)))
+
+  // combinators deserializer
+
+  def multiValueDeserializer[T, Comb[T]](predicate: Token => Boolean,
+                                         count: Token => Int,
+                                         fieldDeserializer: Deserializer[Token, SearchCriteria[T]],
+                                         success: Seq[SearchCriteria[T]] => Comb[T],
+                                         fail: Int => Deserializer[Token, Comb[T]]): Deserializer[Token, Comb[T]] =
+    check[Token, Int](predicate)(count)
+      .flatMap {
+        case i if i < 0 => fail(i)
+        case i =>
+          processTimes[Token, SearchCriteria[T]](fieldDeserializer, i){
+            case searchCriteria: Field[T, _] => true
+            case _ => false
+          }.map(success(_))
+      }
+
+  def singleValueDeserializer[Comb](predicate: Token => Boolean,
+                                    transformer: Token => Comb): Deserializer[Token, Comb] =
+    check[Token, Comb](predicate)(transformer)
+
+  def andDeserializer[T](fieldDeserializer: Deserializer[Token, SearchCriteria[T]]): Deserializer[Token, And[T]] =
+    multiValueDeserializer(
+      keyEqual("And"),
+      _._2.toInt,
+      fieldDeserializer,
+      seq => And(seq),
+      i => Deserializer.failed[Token, And[T]](s"And should contain positive number of criteria (passed $i).")
+    )
+
+  def orDeserializer[T](fieldDeserializer: Deserializer[Token, SearchCriteria[T]]): Deserializer[Token, Or[T]] =
+    multiValueDeserializer(
+      keyEqual("Or"),
+      _._2.toInt,
+      fieldDeserializer,
+      seq => Or(seq),
+      i => Deserializer.failed[Token, Or[T]](s"Or should contain positive number of criteria (passed $i).")
+    )
+
+  def notDeserializer[T](innerDes: Deserializer[Token, SearchCriteria[T]]): Deserializer[Token, Not[T]] =
+    check[Token, Token](keyEqual("Not"))(t => t)
+      .flatMap {
+        case t =>
+          processTimes[Token, SearchCriteria[T]](innerDes, 1){
+            case _ => true
+          }.map(seq => Not(seq.head))
+      }
+
+  def equalDeserializer[T](implicit tokenConverter: TokenConverter[Token, T]): Deserializer[Token, Equal[T]] =
+    singleValueDeserializer(keyEqual("Equal"), t => Equal[T](tokenConverter(t)))
+
+  def stringContainsDeserializer(implicit tokenConverter: TokenConverter[Token, String]): Deserializer[Token, StringContains] =
+    singleValueDeserializer(keyEqual("StringContains"), t => StringContains(tokenConverter(t)))
+
+  def seqContainsDeserializer[A, T <: Seq[A]](implicit tokenConverter: TokenConverter[Token, A]): Deserializer[Token, SeqContains[A, T]] =
+    singleValueDeserializer(keyEqual("SeqContains"), t => SeqContains(tokenConverter(t)))
+
+  def setContainsDeserializer[A, T <: Set[A]](implicit tokenConverter: TokenConverter[Token, A]): Deserializer[Token, SetContains[A, T]] =
+    singleValueDeserializer(keyEqual("SetContains"), t => SetContains(tokenConverter(t)))
+
+  def matchRegExDeserializer(implicit tokenConverter: TokenConverter[Token, String]): Deserializer[Token, MatchRegEx] =
+    singleValueDeserializer(keyEqual("MatchRegEx"), t => MatchRegEx(tokenConverter(t)))
+
+  def lessThanDeserializer[N](implicit tokenConverter: TokenConverter[Token, N]): Deserializer[Token, LessThan[N]] =
+    singleValueDeserializer(keyEqual("LessThan"), t => LessThan(tokenConverter(t)))
+
+  def lessOrEqualDeserializer[N](implicit tokenConverter: TokenConverter[Token, N]): Deserializer[Token, LessThan[N]] =
+    singleValueDeserializer(keyEqual("LessThan"), t => LessThan(tokenConverter(t)))
+
+  LessOrEqual
+
+  GreaterThan
+
+  GreaterOrEqual
+
 
 
   val movieTitleEqualDes: Deserializer[Token, Field[String, Movie]] =
@@ -44,22 +114,12 @@ object SearchCriteriaDeserializer {
     ))
   }
 
-  val andDeserializer: Deserializer[Token, And[Movie]] =
-    check[Token, Int](keyEqual("And"))(_._2.toInt)
-      .flatMap {
-        case i if i < 0 =>
-          Deserializer.failed[Token, And[Movie]](s"And should contain positive number of criteria (passed $i).")
-        case i =>
-          processTimes[Token, SearchCriteria[Movie]](fieldDeserializer, i){
-            case searchCriteria: Field[Movie, _] => true
-            case _ => false
-          }.map(And(_))
-      }
 
-  val bodyDeserializer: Deserializer[Token, SearchCriteria[Movie]] = andDeserializer
+
+  val bodyDeserializer: Deserializer[Token, SearchCriteria[Movie]] = andDeserializer(fieldDeserializer)
 
   val movieSearchCriteria: Deserializer[Token, Criteria[Movie]] =
-    headerDeserializer
+    headerDeserializer("Movie")
       .andThen[SearchCriteria[Movie], Criteria[Movie]](bodyDeserializer){(header, searchCriteria) =>
         val (name, limit, page) = header
         Criteria[Movie](searchCriteria).withName(name).limit(limit).page(page)

@@ -31,10 +31,16 @@ trait Deserializer[Token, +O] {
 
 }
 
+trait DeserializableAs[S, D] {
+  def getDeserializer: Deserializer[S, D]
+}
+
 object Deserializer {
   type Input[Token] = Iterable[Token]
   def emptyInput[Token] = Iterable.empty[Token]
   def input[Token](tokens: Token*): Input[Token] = Iterable(tokens: _*)
+
+  type TokenConverter[Token, T] = Token => T
 
   implicit def toBuilder[Token, O](d: Deserializer[Token, O]): DeserializerBuilder[Token, O] =
     new DeserializerBuilder[Token, O] {
@@ -154,7 +160,8 @@ object Deserializer {
     def processWhile[Token, O](des: Deserializer[Token, O])(predicate: O => Boolean): Deserializer[Token, Seq[O]] = {
       def processWhile0(acc: Seq[O], parsed: Int): Deserializer[Token, Seq[O]] = {
         des.flatMapResult {
-          case Ok(out, inputLeft, tokensParsed) => processWhile0(acc :+ out, parsed + tokensParsed)
+          case Ok(out, inputLeft, tokensParsed) if predicate(out) =>
+            processWhile0(acc :+ out, parsed + tokensParsed)
           case Fail(cause, inputLeft) => Deserializer.always(Ok(acc, inputLeft, parsed))
         }
       }
@@ -166,7 +173,8 @@ object Deserializer {
       def processWhile0(acc: Seq[O], parsed: Int, times: Int): Deserializer[Token, Seq[O]] = {
         if (times < n) {
           des.flatMapResult {
-            case Ok(out, inputLeft, tokensParsed) => processWhile0(acc :+ out, parsed + tokensParsed, times + 1)
+            case Ok(out, inputLeft, tokensParsed) if predicate(out) =>
+              processWhile0(acc :+ out, parsed + tokensParsed, times + 1)
             case fail @ Fail(_, _) => always(fail)
           }
         } else Deserializer((input: Input[Token]) => Ok(acc, input, parsed))

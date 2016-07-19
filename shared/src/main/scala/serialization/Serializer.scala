@@ -16,3 +16,7 @@ object Serializer {
 
 }
 
+trait SerializableAs[S, D] {
+  def getSerializer: Serializer[S, D]
+}
+
