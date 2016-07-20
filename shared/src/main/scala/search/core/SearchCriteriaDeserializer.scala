@@ -1,4 +1,5 @@
 package search.core
+
 import model.Movie
 import search.core.SearchCriteria._
 import serialization.DeserializationDefaults._
@@ -6,6 +7,7 @@ import serialization.{Deserializer, Fail, Ok}
 import serialization.Deserializer.DeserializerBuilder._
 import serialization.Deserializer.TokenConverter
 import querystring.QueryString
+
 /**
   * Created by pp on 5/27/16.
   */
@@ -38,15 +40,20 @@ object SearchCriteriaDeserializer {
       .flatMap {
         case i if i < 0 => fail(i)
         case i =>
-          processTimes[Token, SearchCriteria[T]](fieldDeserializer, i){
+          processTimes[Token, SearchCriteria[T]](fieldDeserializer, i) {
             case searchCriteria: Field[T, _] => true
             case _ => false
           }.map(success(_))
       }
 
-  def singleValueDeserializer[Comb](predicate: Token => Boolean,
-                                    transformer: Token => Comb): Deserializer[Token, Comb] =
-    check[Token, Comb](predicate)(transformer)
+  def singleValueDeserializer[T, Comb](predicate: Token => Boolean,
+                                       deserializer: Deserializer[Token, T],
+                                       transformer: T => Comb): Deserializer[Token, Comb] =
+    for {
+      _ <- check[Token, Token](predicate)(t => t)
+      value <- deserializer
+    } yield transformer(value)
+
 
   def andDeserializer[T](fieldDeserializer: Deserializer[Token, SearchCriteria[T]]): Deserializer[Token, And[T]] =
     multiValueDeserializer(
@@ -70,37 +77,41 @@ object SearchCriteriaDeserializer {
     check[Token, Token](keyEqual("Not"))(t => t)
       .flatMap {
         case t =>
-          processTimes[Token, SearchCriteria[T]](innerDes, 1){
+          processTimes[Token, SearchCriteria[T]](innerDes, 1) {
             case _ => true
           }.map(seq => Not(seq.head))
       }
 
-  def equalDeserializer[T](implicit tokenConverter: TokenConverter[Token, T]): Deserializer[Token, Equal[T]] =
-    singleValueDeserializer(keyEqual("Equal"), t => Equal[T](tokenConverter(t)))
+  def equalDeserializer[T](implicit tokenConverter: Deserializer[Token, T]): Deserializer[Token, Equal[T]] =
+    singleValueDeserializer(keyEqual("Equal"), tokenConverter, Equal[T](_))
 
-  def stringContainsDeserializer(implicit tokenConverter: TokenConverter[Token, String]): Deserializer[Token, StringContains] =
-    singleValueDeserializer(keyEqual("StringContains"), t => StringContains(tokenConverter(t)))
+  def stringContainsDeserializer(implicit tokenConverter: Deserializer[Token, String]): Deserializer[Token, StringContains] =
+    singleValueDeserializer(keyEqual("StringContains"), tokenConverter, StringContains(_))
 
-  def seqContainsDeserializer[A, T <: Seq[A]](implicit tokenConverter: TokenConverter[Token, A]): Deserializer[Token, SeqContains[A, T]] =
-    singleValueDeserializer(keyEqual("SeqContains"), t => SeqContains(tokenConverter(t)))
+  def seqContainsDeserializer[A, T <: Seq[A]](implicit tokenConverter: Deserializer[Token, A]): Deserializer[Token, SeqContains[A, T]] =
+    singleValueDeserializer(keyEqual("SeqContains"), tokenConverter, SeqContains(_))
 
-  def setContainsDeserializer[A, T <: Set[A]](implicit tokenConverter: TokenConverter[Token, A]): Deserializer[Token, SetContains[A, T]] =
-    singleValueDeserializer(keyEqual("SetContains"), t => SetContains(tokenConverter(t)))
+  def setContainsDeserializer[A, T <: Set[A]](implicit tokenConverter: Deserializer[Token, A]): Deserializer[Token, SetContains[A, T]] =
+    singleValueDeserializer(keyEqual("SetContains"), tokenConverter, SetContains(_))
 
-  def matchRegExDeserializer(implicit tokenConverter: TokenConverter[Token, String]): Deserializer[Token, MatchRegEx] =
-    singleValueDeserializer(keyEqual("MatchRegEx"), t => MatchRegEx(tokenConverter(t)))
+  def matchRegExDeserializer(implicit tokenConverter: Deserializer[Token, String]): Deserializer[Token, MatchRegEx] =
+    singleValueDeserializer(keyEqual("MatchRegEx"), tokenConverter, MatchRegEx(_))
 
-  def lessThanDeserializer[N](implicit tokenConverter: TokenConverter[Token, N]): Deserializer[Token, LessThan[N]] =
-    singleValueDeserializer(keyEqual("LessThan"), t => LessThan(tokenConverter(t)))
+  def lessThanDeserializer[N](implicit tokenConverter: Deserializer[Token, N]): Deserializer[Token, LessThan[N]] =
+    singleValueDeserializer(keyEqual("LessThan"), tokenConverter, LessThan[N](_))
 
-  def lessOrEqualDeserializer[N](implicit tokenConverter: TokenConverter[Token, N]): Deserializer[Token, LessThan[N]] =
-    singleValueDeserializer(keyEqual("LessThan"), t => LessThan(tokenConverter(t)))
+  def lessOrEqualDeserializer[N](implicit tokenConverter: Deserializer[Token, N]): Deserializer[Token, LessOrEqual[N]] =
+    singleValueDeserializer(keyEqual("LessOrEqual"), tokenConverter, LessOrEqual[N](_))
 
-  LessOrEqual
+  def greaterThanDeserializer[N](implicit tokenConverter: Deserializer[Token, N]): Deserializer[Token, GreaterThan[N]] =
+    singleValueDeserializer(keyEqual("GreaterThan"), tokenConverter, GreaterThan[N](_))
 
-  GreaterThan
+  def greaterOrEqualDeserializer[N](implicit tokenConverter: Deserializer[Token, N]): Deserializer[Token, GreaterOrEqual[N]] =
+    singleValueDeserializer(keyEqual("GreaterOrEqual"), tokenConverter, GreaterOrEqual[N](_))
 
-  GreaterOrEqual
+  def inDeserializer[N](implicit tokenConverter: Deserializer[Token, Seq[N]]): Deserializer[Token, In[N]] =
+    singleValueDeserializer(keyEqual("In"), tokenConverter, In(_))
+
 
 
 
@@ -115,14 +126,13 @@ object SearchCriteriaDeserializer {
   }
 
 
-
   val bodyDeserializer: Deserializer[Token, SearchCriteria[Movie]] = andDeserializer(fieldDeserializer)
 
   val movieSearchCriteria: Deserializer[Token, Criteria[Movie]] =
     headerDeserializer("Movie")
-      .andThen[SearchCriteria[Movie], Criteria[Movie]](bodyDeserializer){(header, searchCriteria) =>
-        val (name, limit, page) = header
-        Criteria[Movie](searchCriteria).withName(name).limit(limit).page(page)
-      }
+      .andThen[SearchCriteria[Movie], Criteria[Movie]](bodyDeserializer) { (header, searchCriteria) =>
+      val (name, limit, page) = header
+      Criteria[Movie](searchCriteria).withName(name).limit(limit).page(page)
+    }
 
 }

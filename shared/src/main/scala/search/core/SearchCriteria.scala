@@ -2,7 +2,7 @@ package search.core
 
 import querystring.QueryString._
 import serialization.Deserializer.DeserializerBuilder._
-import serialization.{DeserializableAs, Deserializer, SerializableAs}
+import serialization.{DeserializableAs, DeserializationDefaults, Deserializer, SerializableAs}
 
 import scala.annotation.tailrec
 
@@ -141,7 +141,7 @@ object SearchCriteria {
   case class Equal[A](value: A) extends SearchCriteria[A] with SimpleQueryStringSerialization[A] {
     override def check(value: A): Boolean = this.value == value
     override def getDeserializer: Deserializer[(String, String), Equal[A]] =
-      SearchCriteriaDeserializer.equalDeserializer[A]
+      SearchCriteriaDeserializer.equalDeserializer[A](DeserializationDefaults.json[A])
   }
 
   trait ContainsInvoker[C, A] {
@@ -195,6 +195,9 @@ object SearchCriteria {
       with SimpleQueryStringSerialization[N] {
 
     override def check(value: N): Boolean = ordering.lt(value, this.value)
+
+    override def getDeserializer: Deserializer[(String, String), LessThan[N]] =
+      SearchCriteriaDeserializer.lessThanDeserializer[N]
   }
 
   case class LessOrEqual[N](value: N)(implicit ordering: Ordering[N])
@@ -202,6 +205,9 @@ object SearchCriteria {
        with SimpleQueryStringSerialization[N] {
 
     override def check(value: N): Boolean = ordering.lteq(value, this.value)
+
+    override def getDeserializer: Deserializer[(String, String), LessOrEqual[N]] =
+      SearchCriteriaDeserializer.lessOrEqualDeserializer[N]
   }
 
   case class GreaterThan[N](value: N)(implicit ordering: Ordering[N])
@@ -209,6 +215,9 @@ object SearchCriteria {
       with SimpleQueryStringSerialization[N] {
 
     override def check(value: N): Boolean = ordering.gt(value, this.value)
+
+    override def getDeserializer: Deserializer[(String, String), GreaterThan[N]] =
+      SearchCriteriaDeserializer.greaterThanDeserializer[N]
   }
 
   case class GreaterOrEqual[N](value: N)(implicit ordering: Ordering[N])
@@ -216,6 +225,9 @@ object SearchCriteria {
       with SimpleQueryStringSerialization[N] {
 
     override def check(value: N): Boolean = ordering.gteq(value, this.value)
+
+    override def getDeserializer: Deserializer[(String, String), GreaterOrEqual[N]] =
+      SearchCriteriaDeserializer.greaterOrEqualDeserializer[N]
   }
 
   case class In[A](value: Seq[A]) extends SearchCriteria[A] {

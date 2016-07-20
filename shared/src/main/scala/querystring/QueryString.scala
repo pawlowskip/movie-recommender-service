@@ -1,7 +1,8 @@
 package querystring
 
 import search.core.SearchCriteria
-import serialization.Deserializer
+import serialization.Deserializer.DeserializerBuilder
+import serialization.{DeserializationDefaults, Deserializer}
 
 /**
   * Created by pp on 7/13/16.
@@ -20,8 +21,14 @@ object QueryString {
     def toQueryString: Seq[QueryStringParama] = Seq(paramaName -> value.toString)
   }
 
-  def deserializerFromSimpleQSS[A, T <: SimpleQueryStringSerialization[A]]: Deserializer[QueryStringParama, T] = {
+  def deserializerQS[T]: Deserializer[QueryStringParama, T] =
+    DeserializerBuilder.transform[QueryStringParama, String](_._2)
 
+    Deserializer[QueryStringParama, T]{ input =>
+    input.headOption match {
+      case Some(token) => DeserializationDefaults.json[A]
+      case None =>
+    }
   }
 
 }

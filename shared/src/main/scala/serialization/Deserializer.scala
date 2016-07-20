@@ -40,8 +40,6 @@ object Deserializer {
   def emptyInput[Token] = Iterable.empty[Token]
   def input[Token](tokens: Token*): Input[Token] = Iterable(tokens: _*)
 
-  type TokenConverter[Token, T] = Token => T
-
   implicit def toBuilder[Token, O](d: Deserializer[Token, O]): DeserializerBuilder[Token, O] =
     new DeserializerBuilder[Token, O] {
       override val deserializer = d
