@@ -5,7 +5,6 @@ import search.core.SearchCriteria._
 import serialization.DeserializationDefaults._
 import serialization.{Deserializer, Fail, Ok}
 import serialization.Deserializer.DeserializerBuilder._
-import serialization.Deserializer.TokenConverter
 import querystring.QueryString
 
 /**
@@ -14,9 +13,6 @@ import querystring.QueryString
 object SearchCriteriaDeserializer {
   type Token = QueryString.QueryStringParama
   type Header = (String, Int, Int)
-
-  implicit val tokenToString: TokenConverter[Token, String] = (t: Token) => t._2
-
 
   def keyEqual(k: String): Token => Boolean = _._1 == k
 

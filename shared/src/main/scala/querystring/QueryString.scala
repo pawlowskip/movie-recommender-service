@@ -3,6 +3,7 @@ package querystring
 import search.core.SearchCriteria
 import serialization.Deserializer.DeserializerBuilder
 import serialization.{DeserializationDefaults, Deserializer}
+import upickle.default._
 
 /**
   * Created by pp on 7/13/16.
@@ -10,6 +11,8 @@ import serialization.{DeserializationDefaults, Deserializer}
 object QueryString {
   type QueryStringParama = (String, String)
   type QueryStringRep = Seq[QueryStringParama]
+
+  def toString(qs: QueryStringParama): String = qs._2
 
   trait AsQueryString {
     def toQueryString: QueryStringRep
@@ -21,14 +24,7 @@ object QueryString {
     def toQueryString: Seq[QueryStringParama] = Seq(paramaName -> value.toString)
   }
 
-  def deserializerQS[T]: Deserializer[QueryStringParama, T] =
-    DeserializerBuilder.transform[QueryStringParama, String](_._2)
-
-    Deserializer[QueryStringParama, T]{ input =>
-    input.headOption match {
-      case Some(token) => DeserializationDefaults.json[A]
-      case None =>
-    }
-  }
+  def deserializerQS[T](defaultReader: Reader[T]): Deserializer[QueryStringParama, T] =
+    DeserializerBuilder.singleWithNewToken[String, QueryStringParama, T](DeserializationDefaults.json[T], toString)
 
 }
