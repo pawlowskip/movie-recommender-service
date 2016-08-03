@@ -1,5 +1,7 @@
 package search.core
 import utest._
+import upickle.default._
+import querystring.QueryString.readerToTokenConverter
 /**
   * Created by pp on 5/12/16.
   */
@@ -10,7 +12,7 @@ object SearchCriteriaTest extends TestSuite {
 
     "Test[1] - SearchCriteria companion : apply method" - {
 
-      val criteria = SearchCriteria.apply((i: Int) => i < 3)
+      val criteria = SearchCriteria.apply[Int]((i: Int) => i < 3)
 
       "should return instance of SearchCriteria[Int]" - {
         assert(criteria.isInstanceOf[SearchCriteria[Int]])
@@ -34,8 +36,8 @@ object SearchCriteriaTest extends TestSuite {
 
     "Test[3] - Logical SearchCriteria" - {
 
-      val tupleFirstOneCriteria: SearchCriteria[(Int, Int)] = SearchCriteria(t => t._1 == 1)
-      val tupleSecondTwoCriteria: SearchCriteria[(Int, Int)] = SearchCriteria(t => t._2 == 2)
+      val tupleFirstOneCriteria: SearchCriteria[(Int, Int)] = SearchCriteria[(Int, Int)](t => t._1 == 1)
+      val tupleSecondTwoCriteria: SearchCriteria[(Int, Int)] = SearchCriteria[(Int, Int)](t => t._2 == 2)
 
       "And criteria" - {
         val criteria = Criteria[(Int, Int)](

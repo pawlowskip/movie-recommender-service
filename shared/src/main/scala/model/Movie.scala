@@ -1,8 +1,9 @@
 package model
 
 import search.core.SearchCriteria
-import search.core.SearchCriteria.{Criteria, Field}
-
+import search.core.SearchCriteria.{Field}
+import upickle.default._
+import querystring.QueryString.readerToTokenConverter
 /**
   * Created by pp on 4/26/16.
   */
@@ -13,7 +14,7 @@ object Poster{
   case class PosterUrl(criteria: SearchCriteria[String]) extends Field[String, Poster](_.url)
 }
 
-case class Movie(id: Long,
+case class Movie(id: Int,
                  title: String,
                  year: Int,
                  poster: Poster,
@@ -23,8 +24,8 @@ case class Movie(id: Long,
                  description: String)
 
 object Movie {
-  
-  case class MovieId(criteria: SearchCriteria[Long]) extends Field[Long, Movie](_.id)
+
+  case class MovieId(criteria: SearchCriteria[Int]) extends Field[Int, Movie](_.id)
 
   case class MovieTitle(criteria: SearchCriteria[String]) extends Field[String, Movie](_.title)
 

@@ -34,8 +34,8 @@ trait Deserializer[Token, +O] {
 
 }
 
-trait DeserializableAs[S, D, T] {
-  def getDeserializer(implicit reader: Reader[T]): Deserializer[S, D]
+trait DeserializableAs[Token, A, Res] {
+  def getDeserializer(implicit tokenConverter: TokenConverter[Token, A]): Deserializer[Token, Res]
 }
 
 object Deserializer {
@@ -74,15 +74,15 @@ object Deserializer {
     }
 
     def singleWithNewToken[Token, NewToken, O](des: Deserializer[Token, O], f: NewToken => Token): Deserializer[NewToken, O] =
-      Deserializer[NewToken, O] { input =>
-        input.headOption match {
+      Deserializer[NewToken, O] { i =>
+        i.headOption match {
           case Some(newToken) =>
             val token: Token = f(newToken)
-            des.deserialize(input[Token](token)) match {
-              case Ok(result, emptyInput, 1) => Ok(result, input.tail, 1)
-              case Fail(cause, inputLeft) => Fail(cause, input)
+            des.deserialize(input(token)) match {
+              case Ok(result, emptyInput, 1) => Ok(result, i.tail, 1)
+              case Fail(cause, inputLeft) => Fail(cause, i)
             }
-          case None => Fail(s"There is no token to parse.", input)
+          case None => Fail(s"There is no token to parse.", i)
         }
       }
 

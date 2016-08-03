@@ -16,7 +16,7 @@ object Serializer {
 
 }
 
-trait SerializableAs[S, D] {
-  def getSerializer: Serializer[S, D]
+trait SerializableAs[Rep, Token, A, Res] {
+  def getSerializer(implicit tokenConverter: TokenConverter[Token, A]): Serializer[Res, Rep]
 }
 

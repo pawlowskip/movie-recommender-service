@@ -5,7 +5,9 @@ import model.Movie.{MovieMyRating, MoviePoster, MovieViewers, _}
 import model.Poster.PosterUrl
 import utest._
 import search.core.SearchCriteria._
-
+import utest._
+import upickle.default._
+import querystring.QueryString.readerToTokenConverter
 /**
   * Created by pp on 5/14/16.
   */
@@ -30,27 +32,27 @@ object SearchCriteriaSerializationTest extends TestSuite {
       val queryString = criteria.toQueryString
       val correctAnswer: Seq[(String, String)] =
         List(
-          ("criteria", "Movie"),
+          ("criteria", "\"Movie\""),
           ("limit", "-1"),
           ("page", "-1"),
           ("And", "8"),
-          ("field", "MovieTitle"),
-          ("Equal", "Title"),
-          ("field", "MovieId"),
+          ("field", "\"MovieTitle\""),
+          ("Equal", "\"Title\""),
+          ("field", "\"MovieId\""),
           ("GreaterOrEqual", "0"),
-          ("field", "MovieYear"),
-          ("Between", "(1999,2016)"),
-          ("field", "MovieAverageRating"),
-          ("GreaterThan", "7.0"),
-          ("field", "MovieDescription"),
+          ("field", "\"MovieYear\""),
+          ("And","2"), ("GreaterThan","1999"), ("LessThan","2016"),
+          ("field", "\"MovieAverageRating\""),
+          ("GreaterThan", "7"),
+          ("field", "\"MovieDescription\""),
           ("NotEmptyString", "1"),
-          ("field", "MovieMyRating"),
-          ("Equal", "None"),
-          ("field", "MovieViewers"),
+          ("field", "\"MovieMyRating\""),
+          ("Equal", "[]"),
+          ("field", "\"MovieViewers\""),
           ("GreaterThan", "10000"),
-          ("field" ,"MoviePoster"),
-          ("field","PosterUrl"),
-          ("Equal", "url")
+          ("field" ,"\"MoviePoster\""),
+          ("field","\"PosterUrl\""),
+          ("Equal", "\"url\"")
         )
 
       assert(queryString == correctAnswer)
