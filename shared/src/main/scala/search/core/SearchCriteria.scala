@@ -1,6 +1,7 @@
 package search.core
 
 import querystring.QueryString
+import search.core.SearchCriteriaDeserializer._
 import querystring.QueryString._
 import serialization.Deserializer.DeserializerBuilder
 import serialization.Deserializer.DeserializerBuilder._
@@ -14,28 +15,27 @@ import upickle.default._
   */
 sealed trait SearchCriteria[Val]
   extends AsQueryString[Val]
-    with SerializableAs[QueryStringRep, QueryStringParama, Val, SearchCriteria[Val]]
-    with DeserializableAs[QueryStringParama, Val, SearchCriteria[Val]] {
+    with SerializableAs[QueryStringRep, QSParam, Val, SearchCriteria[Val]]
+    with DeserializableAs[QSParam, Val, SearchCriteria[Val]] {
 
   def check(value: Val): Boolean
-  //def getSerializer = SearchCriteriaSerializer.serializer
-  override def getSerializer(implicit tokenConverter: TokenConverter[QueryStringParama, Val]) =
+  
+  override def getSerializer(implicit tokenConverter: TokenConverter[QSParam, Val]) =
     SearchCriteriaSerializer.serializer(tokenConverter)
-  //def getDeserializer()(implicit reader: Reader[Val], writer: Writer[Val]): Deserializer[QueryStringParama, SearchCriteria[Val]] =
-    //getDeserializer(QueryString.readerToTokenConverter[Val](reader, writer))
 }
 
 object SearchCriteria {
 
   def apply[A](f: A => Boolean,
-               toQueryStringFun: => Seq[QueryStringParama] = Seq(),
-               deserializer: Deserializer[(String, String), SearchCriteria[A]] =
-               Deserializer.failed[QueryStringParama, SearchCriteria[A]]("Not implemented!")) =
+               toQueryStringFun: => Seq[QSParam] = Seq(),
+               deserializer: Deserializer[QSParam, SearchCriteria[A]] =
+                  Deserializer.failed[QSParam, SearchCriteria[A]]("Not implemented!")
+              ) =
     new SearchCriteria[A] {
       override def check(value: A) = f(value)
-      override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]):
-        Deserializer[(String, String), SearchCriteria[A]] = deserializer
-      override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): QueryStringRep =
+      override def getDeserializer(implicit converter: TokenConverter[QSParam, A]):
+        Deserializer[QSParam, SearchCriteria[A]] = deserializer
+      override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): QueryStringRep =
         toQueryStringFun
     }
 
@@ -64,28 +64,35 @@ object SearchCriteria {
 
     def withName(name: String): Criteria[A] = copy(queryStringName = name)
 
-    def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): Seq[(String, String)] = {
-      val params = collection.mutable.ListBuffer[(String, String)]()
-      params += "criteria" -> s""""${queryStringName}""""
+    def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): Seq[QSParam] = {
+      val params = collection.mutable.ListBuffer[QSParam]()
+      params += "criteria" -> s""""$queryStringName""""
       props match {
-        case Some(SearchProps(limit, page)) => params += "limit" -> limit.toString; params += "page" -> page.toString
-        case None => params += "limit" -> "-1"; params += "page" -> "-1"
+        case Some(SearchProps(limit, page)) =>
+          params += "limit" -> limit.toString
+          params += "page" -> page.toString
+        case None =>
+          params += "limit" -> "-1"
+          params += "page" -> "-1"
       }
       params ++= criteria.toQueryString
       params.toList
     }
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]): Deserializer[(String, String), SearchCriteria[A]] =
-      SearchCriteriaDeserializer.searchCriteria(queryStringName, criteria.getDeserializer(converter))
-
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, A]): Deserializer[QSParam, SearchCriteria[A]] =
+      searchCriteriaDeserializer(queryStringName, criteria.getDeserializer(converter))
   }
 
-  abstract class Field[F, C](f: C => F)(implicit additionalTokenConverter: TokenConverter[QueryStringParama, F]) extends SearchCriteria[C] {
+  abstract class Field[F, C](f: C => F)(implicit additionalTokenConverter: TokenConverter[QSParam, F]) extends SearchCriteria[C] {
+
     val criteria: SearchCriteria[F]
+
     override def check(value: C): Boolean = criteria.check(f(value))
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), C]): Seq[QueryStringParama] =
+
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, C]): Seq[QSParam] =
       Seq("field" -> s""""${getClass.getSimpleName}"""") ++ criteria.toQueryString
-    override def getDeserializer(implicit tokenConverter: TokenConverter[QueryStringParama, C]): Deserializer[QueryStringParama, SearchCriteria[C]] =
+
+    override def getDeserializer(implicit tokenConverter: TokenConverter[QSParam, C]): Deserializer[QSParam, SearchCriteria[C]] =
       SearchCriteriaDeserializer.fieldDeserializer(getClass.getSimpleName, criteria.getDeserializer(additionalTokenConverter), f, additionalTokenConverter)
   }
 
@@ -103,14 +110,14 @@ object SearchCriteria {
 
   case class And[A](criteria: Seq[SearchCriteria[A]]) extends SearchCriteria[A] {
     override def check(value: A): Boolean = criteria.forall(_.check(value))
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): Seq[QueryStringParama] = {
-      val params = collection.mutable.ListBuffer[QueryStringParama]()
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): Seq[QSParam] = {
+      val params = collection.mutable.ListBuffer[QSParam]()
       params += "And" -> criteria.size.toString
       criteria.foreach(c => params ++= c.toQueryString)
       params.toList
     }
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]): Deserializer[(String, String), And[A]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, A]): Deserializer[QSParam, And[A]] =
       SearchCriteriaDeserializer.andDeserializer{
         oneOf(criteria.map(_.getDeserializer(converter)))
       }
@@ -122,14 +129,14 @@ object SearchCriteria {
 
   case class Or[A](criteria: Seq[SearchCriteria[A]]) extends SearchCriteria[A] {
     override def check(value: A): Boolean = criteria.exists(_.check(value))
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): Seq[QueryStringParama] = {
-      val params = collection.mutable.ListBuffer[QueryStringParama]()
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): Seq[QSParam] = {
+      val params = collection.mutable.ListBuffer[QSParam]()
       params += "Or" -> criteria.size.toString
       criteria.foreach(c => params ++= c.toQueryString)
       params.toList
     }
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]): Deserializer[(String, String), Or[A]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, A]): Deserializer[QSParam, Or[A]] =
       SearchCriteriaDeserializer.orDeserializer{
         oneOf(criteria.map(_.getDeserializer(converter)))
       }
@@ -141,22 +148,22 @@ object SearchCriteria {
 
   case class Not[A](criteria: SearchCriteria[A]) extends SearchCriteria[A] {
     override def check(value: A): Boolean = !criteria.check(value)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): Seq[(String, String)] = {
-      val params = collection.mutable.ListBuffer[QueryStringParama]()
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): Seq[QSParam] = {
+      val params = collection.mutable.ListBuffer[QSParam]()
       Seq("Not" -> "1")
       params ++= criteria.toQueryString
       params.toList
     }
 
-    def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]): Deserializer[(String, String), Not[A]] =
+    def getDeserializer(implicit converter: TokenConverter[QSParam, A]): Deserializer[QSParam, Not[A]] =
       SearchCriteriaDeserializer.notDeserializer(criteria.getDeserializer(converter))
   }
 
   case class Equal[A](value: A) extends SearchCriteria[A] with SimpleQueryStringSerialization[A] {
     override def check(value: A): Boolean = this.value == value
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, A]): Deserializer[(String, String), Equal[A]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, A]): Deserializer[QSParam, Equal[A]] =
       SearchCriteriaDeserializer.equalDeserializer[A](converter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), A]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): QueryStringRep = serialize
   }
 
   trait ContainsInvoker[C, A] {
@@ -164,7 +171,7 @@ object SearchCriteria {
   }
 
   def Contains[C, A](value: A)(implicit containsInvoker: ContainsInvoker[C, A],
-                               additionalTokenConverter: TokenConverter[QueryStringParama, A]): SearchCriteria[C] = {
+                               additionalTokenConverter: TokenConverter[QSParam, A]): SearchCriteria[C] = {
     containsInvoker.contains(value)
   }
 
@@ -173,41 +180,41 @@ object SearchCriteria {
   }
 
   implicit def seqContainsInvoker[Elem, Col <: Seq[Elem]]
-    (implicit additionalTokenConverter: TokenConverter[QueryStringParama, Elem]): ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
+    (implicit additionalTokenConverter: TokenConverter[QSParam, Elem]): ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
 
     override def contains(value: Elem): SearchCriteria[Col] = SeqContains[Elem, Col](value)
   }
 
   implicit def setContainsInvoker[Elem, Col <: Set[Elem]]
-  (implicit additionalTokenConverter: TokenConverter[QueryStringParama, Elem]): ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
+  (implicit additionalTokenConverter: TokenConverter[QSParam, Elem]): ContainsInvoker[Col, Elem] = new ContainsInvoker[Col, Elem] {
 
     override def contains(value: Elem): SearchCriteria[Col] = SetContains[Elem, Col](value)
   }
 
   case class StringContains(value: String) extends SearchCriteria[String] with SimpleQueryStringSerialization[String] {
     override def check(value: String): Boolean = value.contains(this.value)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, String]): Deserializer[(String, String), StringContains] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, String]): Deserializer[QSParam, StringContains] =
       SearchCriteriaDeserializer.stringContainsDeserializer(converter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), String]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, String]): QueryStringRep = serialize
   }
 
-  case class SeqContains[A, T <: Seq[A]](value: A)(implicit additionalTokenConverter: TokenConverter[QueryStringParama, A])
+  case class SeqContains[A, T <: Seq[A]](value: A)(implicit additionalTokenConverter: TokenConverter[QSParam, A])
     extends SearchCriteria[T] with SimpleQueryStringSerialization[A] {
 
     override def check(value: T): Boolean = value.contains(this.value)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, T]): Deserializer[(String, String), SeqContains[A, T]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, T]): Deserializer[QSParam, SeqContains[A, T]] =
       SearchCriteriaDeserializer.seqContainsDeserializer[A, T](additionalTokenConverter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), T]): QueryStringRep =
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, T]): QueryStringRep =
       serialize(additionalTokenConverter)
   }
 
-  case class SetContains[A, T <: Set[A]](value: A)(implicit additionalTokenConverter: TokenConverter[QueryStringParama, A])
+  case class SetContains[A, T <: Set[A]](value: A)(implicit additionalTokenConverter: TokenConverter[QSParam, A])
     extends SearchCriteria[T] with SimpleQueryStringSerialization[A] {
 
     override def check(value: T): Boolean = value.contains(this.value)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, T]): Deserializer[(String, String), SetContains[A, T]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, T]): Deserializer[QSParam, SetContains[A, T]] =
       SearchCriteriaDeserializer.setContainsDeserializer[A, T](additionalTokenConverter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), T]): QueryStringRep =
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, T]): QueryStringRep =
       serialize(additionalTokenConverter)
   }
 
@@ -215,9 +222,9 @@ object SearchCriteria {
   case class MatchRegEx(value: String) extends SearchCriteria[String] with SimpleQueryStringSerialization[String] {
     val regEx = value.r
     override def check(value: String): Boolean = regEx.findFirstIn(value).isDefined
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, String]): Deserializer[(String, String), MatchRegEx] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, String]): Deserializer[QSParam, MatchRegEx] =
       SearchCriteriaDeserializer.matchRegExDeserializer(converter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), String]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, String]): QueryStringRep = serialize
   }
 
   case class LessThan[N](value: N)(implicit ordering: Ordering[N])
@@ -226,18 +233,18 @@ object SearchCriteria {
 
     override def check(value: N): Boolean = ordering.lt(value, this.value)
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, N]): Deserializer[(String, String), LessThan[N]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, N]): Deserializer[QSParam, LessThan[N]] =
       SearchCriteriaDeserializer.lessThanDeserializer[N](converter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), N]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, N]): QueryStringRep = serialize
   }
 
   case class LessOrEqual[N](value: N)(implicit ordering: Ordering[N])
     extends SearchCriteria[N]
        with SimpleQueryStringSerialization[N] {
     override def check(value: N): Boolean = ordering.lteq(value, this.value)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, N]): Deserializer[(String, String), LessOrEqual[N]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, N]): Deserializer[QSParam, LessOrEqual[N]] =
       SearchCriteriaDeserializer.lessOrEqualDeserializer[N](converter)
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), N]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, N]): QueryStringRep = serialize
   }
 
   case class GreaterThan[N](value: N)(implicit ordering: Ordering[N])
@@ -246,10 +253,10 @@ object SearchCriteria {
 
     override def check(value: N): Boolean = ordering.gt(value, this.value)
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, N]): Deserializer[(String, String), GreaterThan[N]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, N]): Deserializer[QSParam, GreaterThan[N]] =
       SearchCriteriaDeserializer.greaterThanDeserializer[N](converter)
 
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), N]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, N]): QueryStringRep = serialize
   }
 
   case class GreaterOrEqual[N](value: N)(implicit ordering: Ordering[N])
@@ -258,10 +265,10 @@ object SearchCriteria {
 
     override def check(value: N): Boolean = ordering.gteq(value, this.value)
 
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, N]): Deserializer[(String, String), GreaterOrEqual[N]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, N]): Deserializer[QSParam, GreaterOrEqual[N]] =
       SearchCriteriaDeserializer.greaterOrEqualDeserializer[N](converter)
 
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), N]): QueryStringRep = serialize
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, N]): QueryStringRep = serialize
   }
 
   object In {
@@ -294,10 +301,10 @@ object SearchCriteria {
 
   case object NotEmptyString extends SearchCriteria[String] {
     override def check(value: String): Boolean = value.nonEmpty
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), String]): Seq[(String, String)] =
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, String]): Seq[QSParam] =
       Seq(representation)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, String])
-      : Deserializer[(String, String), SearchCriteria[String]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, String])
+      : Deserializer[QSParam, SearchCriteria[String]] =
       DeserializerBuilder.single(representation, this)
 
     private val representation = "NotEmptyString" -> "1"
@@ -305,10 +312,10 @@ object SearchCriteria {
 
   case class NotEmptyCollection[T <: Traversable[_]]() extends SearchCriteria[T] {
     override def check(value: T): Boolean = value.nonEmpty
-    override def toQueryString(implicit tokenConverter: TokenConverter[(String, String), T]): Seq[(String, String)] =
+    override def toQueryString(implicit tokenConverter: TokenConverter[QSParam, T]): Seq[QSParam] =
       Seq(representation)
-    override def getDeserializer(implicit converter: TokenConverter[QueryStringParama, T])
-      : Deserializer[(String, String), SearchCriteria[T]] =
+    override def getDeserializer(implicit converter: TokenConverter[QSParam, T])
+      : Deserializer[QSParam, SearchCriteria[T]] =
       DeserializerBuilder.single(representation, this)
 
       private val representation = "NotEmptyCollection" -> "1"

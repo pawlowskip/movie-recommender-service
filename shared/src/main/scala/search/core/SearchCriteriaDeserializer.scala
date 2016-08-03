@@ -12,7 +12,7 @@ import querystring.QueryString._
   * Created by pp on 5/27/16.
   */
 object SearchCriteriaDeserializer {
-  type Token = QueryString.QueryStringParama
+  type Token = QueryString.QSParam
   type Header = (String, Int, Int)
 
   def keyEqual(k: String): Token => Boolean = _._1 == k
@@ -107,11 +107,11 @@ object SearchCriteriaDeserializer {
     singleValueDeserializer[N, GreaterOrEqual[N]](keyEqual("GreaterOrEqual"), tokenConverter, GreaterOrEqual[N](_))
 
   def fieldDeserializer[F, C](name: String,
-                              des: Deserializer[QueryStringParama, SearchCriteria[F]],
+                              des: Deserializer[QSParam, SearchCriteria[F]],
                               f: C => F,
-                              tokenConverter: TokenConverter[QueryStringParama, F])
+                              tokenConverter: TokenConverter[QSParam, F])
 
-  : Deserializer[QueryStringParama, SearchCriteria[C]] = {
+  : Deserializer[QSParam, SearchCriteria[C]] = {
 
     single("field" -> name, Unit)
       .andThen[SearchCriteria[F], SearchCriteria[C]](des)((_, sf) => new Field(f)(tokenConverter) {
@@ -119,7 +119,7 @@ object SearchCriteriaDeserializer {
     })
   }
 
-  def searchCriteria[A](name: String, bodyDeserializer: Deserializer[Token, SearchCriteria[A]]): Deserializer[Token, Criteria[A]] =
+  def searchCriteriaDeserializer[A](name: String, bodyDeserializer: Deserializer[Token, SearchCriteria[A]]): Deserializer[Token, Criteria[A]] =
     headerDeserializer(name)
       .andThen[SearchCriteria[A], Criteria[A]](bodyDeserializer) { (header, searchCriteria) =>
       val (name, limit, page) = header
