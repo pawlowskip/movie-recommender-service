@@ -66,7 +66,7 @@ object SearchCriteria {
 
     def toQueryString(implicit tokenConverter: TokenConverter[QSParam, A]): Seq[QSParam] = {
       val params = collection.mutable.ListBuffer[QSParam]()
-      params += "criteria" -> s""""$queryStringName""""
+      params += "criteria" -> s"""$queryStringName"""
       props match {
         case Some(SearchProps(limit, page)) =>
           params += "limit" -> limit.toString
@@ -97,13 +97,14 @@ object SearchCriteria {
   }
 
 
-  implicit def toFilterExecutor[A](criteria: Criteria[A]): FilterExecutor[A] = new FilterExecutor(criteria)
+  implicit def toFilterExecutor[A](criteria: SearchCriteria[A]): FilterExecutor[A] = new FilterExecutor(criteria)
 
-  class FilterExecutor[A](criteria: Criteria[A]) {
+  class FilterExecutor[A](criteria: SearchCriteria[A]) {
     def filter[C <: Iterable[A]](collection: C): Iterable[A] = criteria match {
       case Criteria(searchCriteria, _, None) => collection.filter(a => searchCriteria.check(a))
       case Criteria(searchCriteria, _, Some(SearchProps(limit, page))) =>
         collection.filter(a => searchCriteria.check(a)).slice(page * limit, (page + 1) * limit)
+      case _ => collection.filter(p => criteria.check(p))
     }
   }
 
