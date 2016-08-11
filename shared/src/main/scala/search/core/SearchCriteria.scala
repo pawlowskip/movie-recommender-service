@@ -93,7 +93,7 @@ object SearchCriteria {
       Seq("field" -> s""""${getClass.getSimpleName}"""") ++ criteria.toQueryString
 
     override def getDeserializer(implicit tokenConverter: TokenConverter[QSParam, C]): Deserializer[QSParam, SearchCriteria[C]] =
-      SearchCriteriaDeserializer.fieldDeserializer(getClass.getSimpleName, criteria.getDeserializer(additionalTokenConverter), f, additionalTokenConverter)
+      SearchCriteriaDeserializer.fieldDeserializer(s""""${getClass.getSimpleName}"""", criteria.getDeserializer(additionalTokenConverter), f, additionalTokenConverter)
   }
 
 

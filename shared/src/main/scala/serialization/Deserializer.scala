@@ -179,6 +179,7 @@ object Deserializer {
         des.flatMapResult {
           case Ok(out, inputLeft, tokensParsed) if predicate(out) =>
             processWhile0(acc :+ out, parsed + tokensParsed)
+          case Ok(out, inputLeft, tokensParsed) => Deserializer.always(Ok(acc, inputLeft, parsed))
           case Fail(cause, inputLeft) => Deserializer.always(Ok(acc, inputLeft, parsed))
         }
       }
@@ -192,6 +193,8 @@ object Deserializer {
           des.flatMapResult {
             case Ok(out, inputLeft, tokensParsed) if predicate(out) =>
               processWhile0(acc :+ out, parsed + tokensParsed, times + 1)
+            case Ok(out, inputLeft, tokensParsed) =>
+              processWhile0(acc, parsed, times)
             case fail@Fail(_, _) => always(fail)
           }
         } else Deserializer((input: Input[Token]) => Ok(acc, input, parsed))
