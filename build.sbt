@@ -10,6 +10,7 @@ lazy val server = (project in file("server")).settings(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   libraryDependencies ++= Seq(
     "com.vmunier" %% "play-scalajs-scripts" % "0.4.0",
+    "org.reactivemongo" %% "play2-reactivemongo" % "0.11.14-play24",
     specs2 % Test
   ),
   includeFilter in (Assets, LessKeys.less) := "*.less",
