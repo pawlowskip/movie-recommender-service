@@ -6,8 +6,27 @@ package model
 
 
 
-case class BetweenInl[T](from: Option[T], to: Option[T])
-case class BetweenExl[T](from: Option[T], to: Option[T])
+case class BetweenInl[T](from: Option[T], to: Option[T]) {
+  def isBetween(x: T)(implicit ord: Ordering[T]): Boolean = {
+    (from, to) match {
+      case (Some(f), Some(t)) => ord.gteq(x, f) && ord.lteq(x, t)
+      case (Some(f), None) => ord.gteq(x, f)
+      case (None, Some(t)) => ord.lteq(x, t)
+      case (None, None) => false
+    }
+  }
+}
+
+case class BetweenExl[T](from: Option[T], to: Option[T]) {
+  def isBetween(x: T)(implicit ord: Ordering[T]): Boolean = {
+    (from, to) match {
+      case (Some(f), Some(t)) => ord.gt(x, f) && ord.lt(x, t)
+      case (Some(f), None) => ord.gt(x, f)
+      case (None, Some(t)) => ord.lt(x, t)
+      case (None, None) => false
+    }
+  }
+}
 
 sealed trait SortOrder
 object Ascending extends SortOrder
@@ -18,7 +37,7 @@ case class SortByYear(order: SortOrder) extends SortBy
 case class SortByAverageRating(order: SortOrder) extends SortBy
 case class SortByViewers(order: SortOrder) extends SortBy
 
-case class MovieCriteria(page: Int,
+case class MovieCriteria(lastId: Long,
                          limit: Int,
                          titleContains: Option[String],
                          yearBetween: Option[BetweenInl[Int]],

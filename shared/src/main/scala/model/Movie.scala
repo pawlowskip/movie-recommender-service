@@ -1,8 +1,5 @@
 package model
 
-import search.core.SearchCriteria
-import search.core.SearchCriteria.{Criteria, Field}
-
 /**
   * Created by pp on 4/26/16.
   */
