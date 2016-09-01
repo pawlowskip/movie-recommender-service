@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * Created by pp on 8/23/16.
   */
 class RecommenderServiceDao(val reactiveMongoApi: ReactiveMongoApi)(implicit ec: ExecutionContext)
-  extends MovieRecommenderApi {
+  extends MovieRecommenderDao {
 
   import model.BsonHandlers._
 
@@ -129,7 +129,6 @@ class RecommenderServiceDao(val reactiveMongoApi: ReactiveMongoApi)(implicit ec:
               result <- collection.aggregate(pipeline.head, pipeline.tail).map(_.head[Movie])
             } yield result
           case _ =>
-
             for {
               collection <- movies
               result <- collection.find((Movies.id -> BSONDocument("$gt" -> lastId)) :: querySelector)

@@ -3,7 +3,12 @@
 # ~~~~
 
 # Home page
-GET     /                           controllers.Application.index
+GET     /                           controllers.RecommenderController.index
+GET     /myRatings                  controllers.RecommenderController.getMyRatings
+GET     /recommendations            controllers.RecommenderController.getRecommendations
+PUT     /rateMovie                  controllers.RecommenderController.rateMovie
+POST    /updateRating               controllers.RecommenderController.updateRating
+POST    /queryMovies                controllers.RecommenderController.queryMovies
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/fonts/*file         controllers.Assets.at(path="/public/lib/font-awesome/fonts", file)

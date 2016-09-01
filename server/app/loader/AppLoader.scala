@@ -5,7 +5,8 @@ import api.MovieRecommenderApi
 import com.softwaremill.macwire._
 import controllers.Assets
 import controllers.RecommenderController
-import dao.RecommenderServiceDao
+import dao.{MovieRecommenderDao, RecommenderServiceDao}
+import dao.mock.RecommenderServiceDaoMock
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.inject.DefaultApplicationLifecycle
@@ -39,7 +40,7 @@ trait AppModule
   lazy val reactiveMongoApi = wire[DefaultReactiveMongoApi]
 
   // Define services bindings
-  lazy val recommenderServiceDao: MovieRecommenderApi = wire[RecommenderServiceDao]
+  lazy val recommenderServiceDao: MovieRecommenderDao = wire[RecommenderServiceDaoMock]
 
   // Define controllers bindings
   lazy val appController: RecommenderController = wire[RecommenderController]
