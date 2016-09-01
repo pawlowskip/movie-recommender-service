@@ -24,7 +24,11 @@ lazy val server = (project in file("server")).settings(
     "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test,
     "com.softwaremill.macwire" %% "macros" % "2.2.2" % "provided",
     "com.softwaremill.macwire" %% "util" % "2.2.2",
-    "com.softwaremill.macwire" %% "proxy" % "2.2.2"
+    "com.softwaremill.macwire" %% "proxy" % "2.2.2",
+    "jp.t2v" %% "play2-auth" % "0.14.1",
+    "jp.t2v" %% "play2-auth-test" % "0.14.1" % "test",
+    "com.github.t3hnar" % "scala-bcrypt_2.11" % "2.4",
+    play.sbt.Play.autoImport.cache
   ) ++ commonDependencies,
   includeFilter in (Assets, LessKeys.less) := "*.less",
   excludeFilter in (Assets, LessKeys.less) := "_*.less"

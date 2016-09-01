@@ -1,20 +1,20 @@
-package mocks
+package dao.mock
 
-import api.MovieRecommenderApi
-import model._
-
-import scala.concurrent.Future
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
+import api.MovieRecommenderApi
+import dao.MovieRecommenderDao
 import dao.RecommenderServiceDao.RecommenderServiceDaoException
+import model._
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
 
 /**
   * Created by pp on 8/27/16.
   */
-class RecommenderServiceDaoMock extends MovieRecommenderApi {
+class RecommenderServiceDaoMock extends MovieRecommenderDao {
   val idGeneratorMovies = new AtomicInteger(1)
   val idGeneratorUsers = new AtomicInteger(1)
   val movies = new ConcurrentHashMap[Long, Movie].asScala
